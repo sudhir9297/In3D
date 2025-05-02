@@ -1,7 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { GalleryVerticalEnd } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 export default function Home() {
