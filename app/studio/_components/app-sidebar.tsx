@@ -151,7 +151,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {Array.from({ length: 24 }).map((_, index) => (
                 <div
                   key={index}
-                  className="aspect-video border h-12 w-full rounded-lg bg-muted "
+                  className="aspect-video border h-12 w-full rounded-lg bg-white "
                 />
               ))}
             </SidebarGroupContent>

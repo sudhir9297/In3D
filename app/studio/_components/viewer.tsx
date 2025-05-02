@@ -1,16 +1,36 @@
+"use client";
+
 import React from "react";
+import { Canvas } from "@react-three/fiber";
+import { Center, Environment, OrbitControls, useGLTF } from "@react-three/drei";
+
+function Model() {
+  const { scene } = useGLTF("model.glb");
+  return <primitive object={scene} />;
+}
 
 export const ViewerWrapper = () => {
   return (
-    <div className="w-full h-full">
-      <div
-        className="h-full w-full"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, #d9d9d9 1px, transparent 1px)",
-          backgroundSize: "20px 20px",
+    <div className="w-full h-full flex-1">
+      <Canvas
+        gl={{
+          preserveDrawingBuffer: true,
+          localClippingEnabled: true,
+          antialias: true,
         }}
-      ></div>
+        shadows
+        dpr={[1, 1.5]}
+        camera={{
+          fov: 45,
+          near: 0.1,
+        }}
+      >
+        <Environment preset="apartment" />
+        <Center>
+          <Model />
+        </Center>
+        <OrbitControls />
+      </Canvas>
     </div>
   );
 };
