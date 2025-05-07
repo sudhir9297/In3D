@@ -1,29 +1,43 @@
 "use client";
-
-import { AppSidebar } from "@/app/studio/_components/app-sidebar";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { AppSidebar } from "./_components/AppSideMenu/app-sidebar";
 import { ViewerWrapper } from "./_components/viewer";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { useResponsiveLayout } from "./hooks/useResponsiveLayout";
 
 export default function Page() {
+  const { isMobile } = useResponsiveLayout();
+
+  const panelConfig = {
+    main: {
+      defaultSize: isMobile ? 60 : 80,
+      minSize: isMobile ? 50 : 75,
+      maxSize: isMobile ? 60 : 80,
+    },
+    sidebar: {
+      defaultSize: 20,
+    },
+  };
+
   return (
-    <SidebarProvider
-      style={
-        {
-          "--sidebar-width": "380px",
-        } as React.CSSProperties
-      }
+    <ResizablePanelGroup
+      direction={isMobile ? "vertical" : "horizontal"}
+      className="w-full min-h-screen"
     >
-      <SidebarInset>
-        <header className="bg-background sticky top-0 flex shrink-0 items-center gap-2 border-b p-4">
-          <SidebarTrigger className="-ml-1" />
-        </header>
+      <ResizablePanel
+        defaultSize={panelConfig.main.defaultSize}
+        minSize={panelConfig.main.minSize}
+        maxSize={panelConfig.main.maxSize}
+      >
         <ViewerWrapper />
-      </SidebarInset>
-      <AppSidebar side="right" />
-    </SidebarProvider>
+      </ResizablePanel>
+      <ResizableHandle withHandle />
+      <ResizablePanel defaultSize={panelConfig.sidebar.defaultSize}>
+        <AppSidebar />
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }

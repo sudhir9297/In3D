@@ -25,6 +25,7 @@ export const ViewerWrapper = () => {
           near: 0.1,
         }}
       >
+        <color attach="background" args={["#f2f2f2"]} />
         <Environment preset="apartment" />
         <Center>
           <Model />
