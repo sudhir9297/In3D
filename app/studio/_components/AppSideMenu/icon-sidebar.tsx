@@ -1,25 +1,5 @@
 import type React from "react";
-import {
-  Home,
-  Bell,
-  Inbox,
-  CheckSquare,
-  Layers,
-  ListTodo,
-  Grid,
-  Users,
-  BarChart2,
-  Settings,
-  Search,
-  Plus,
-  Triangle,
-  Move,
-  Square,
-  Box,
-  Circle,
-} from "lucide-react";
-
-import { cn } from "@/lib/utils";
+import { Home, Layers, Triangle, Square, Box, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,

@@ -1,12 +1,7 @@
 "use client";
 import { AppSidebar } from "./_components/AppSideMenu/app-sidebar";
 import { ViewerWrapper } from "./_components/viewer";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { useResponsiveLayout } from "./hooks/useResponsiveLayout";
+
 import {
   Box,
   Circle,
@@ -20,19 +15,7 @@ import {
 import { useState } from "react";
 
 export default function Page() {
-  const { isMobile } = useResponsiveLayout();
   const [isCollapsibleMenuOpen, setIsCollapsibleMenuOpen] = useState(true);
-
-  const panelConfig = {
-    main: {
-      defaultSize: isMobile ? 60 : 80,
-      minSize: isMobile ? 50 : 75,
-      maxSize: isMobile ? 60 : 80,
-    },
-    sidebar: {
-      defaultSize: 20,
-    },
-  };
 
   const tools = [
     { icon: Layers, label: "Layers" },

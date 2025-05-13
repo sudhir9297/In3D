@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { ArchiveX, File, Inbox, Send, Trash2 } from "lucide-react";
 import React, { useEffect, useRef } from "react";
 
 export const RightSideBar = ({ isOpen }: { isOpen: boolean }) => {
