@@ -4,7 +4,6 @@ import React, { useEffect, useRef } from "react";
 export const RightSideBar = ({ isOpen }: { isOpen: boolean }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Handle animation
   useEffect(() => {
     const menu = menuRef.current;
     if (!menu) return;

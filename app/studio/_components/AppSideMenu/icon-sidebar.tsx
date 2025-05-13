@@ -1,5 +1,5 @@
 import type React from "react";
-import { Home, Layers, Triangle, Square, Box, Circle } from "lucide-react";
+import { Box, ListTree, TentTree, SwatchBook, Blend } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -10,12 +10,11 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const mainIcons = [
-  { icon: Home, label: "Home" },
-  { icon: Layers, label: "Layers" },
-  { icon: Triangle, label: "Triangle" },
-  { icon: Square, label: "Square" },
-  { icon: Box, label: "Box" },
-  { icon: Circle, label: "Circle" },
+  { icon: ListTree, label: "Outline" },
+  { icon: SwatchBook, label: "Assets" },
+  { icon: Box, label: "Material" },
+  { icon: TentTree, label: "Environment" },
+  { icon: Blend, label: "Post Processing" },
 ];
 
 export const IconSidebar = () => {
