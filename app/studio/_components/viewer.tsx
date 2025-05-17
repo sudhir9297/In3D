@@ -27,7 +27,7 @@ export const ViewerWrapper = ({
 }: {
   sidebarIsOpen: boolean;
 }) => {
-  const SIDEBAR_WIDTH = 300;
+  const SIDEBAR_WIDTH = 400;
 
   const { containerRef, canvasRef } = useResponsiveCanvas(
     sidebarIsOpen,
