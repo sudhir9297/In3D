@@ -14,13 +14,14 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
+import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const mainIcons = [
-  { icon: ListTree, label: "Outline" },
-  { icon: SwatchBook, label: "Assets" },
-  { icon: Box, label: "Material" },
-  { icon: TentTree, label: "Environment" },
-  { icon: Blend, label: "Post Processing" },
+  { icon: ListTree, label: "Outline", value: "outline" },
+  { icon: SwatchBook, label: "Assets", value: "assets" },
+  { icon: Box, label: "Material", value: "material" },
+  { icon: TentTree, label: "Environment", value: "environment" },
+  { icon: Blend, label: "Post Processing", value: "postprocessing" },
 ];
 
 export const IconSidebar = () => {
@@ -28,26 +29,31 @@ export const IconSidebar = () => {
     <TooltipProvider delayDuration={300}>
       <div className="w-full md:h-screen md:w-10  h-10 border-b flex md:flex-col bg-background  ">
         <Carousel className="md:hidden" arrow>
-          <CarouselContent className="gap-2">
-            {mainIcons.map((item) => (
-              <CarouselItem key={item.label}>
-                <IconButton
-                  icon={<item.icon className="h-3.5 w-3.5" />}
-                  label={item.label}
-                />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
+          <TabsList>
+            <CarouselContent className="gap-2">
+              {mainIcons.map((item) => (
+                <CarouselItem key={item.label}>
+                  <IconButton
+                    icon={<item.icon className="h-3.5 w-3.5" />}
+                    label={item.label}
+                    value={item.value}
+                  />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </TabsList>
         </Carousel>
-        <div className="p-2  md:flex md:flex-col flex-1 items-center gap-4 hidden ">
+        <TabsList className="p-2  md:flex md:flex-col flex-1 items-center gap-2 hidden ">
           {mainIcons.map((item) => (
             <IconButton
               key={item.label}
               icon={<item.icon className="h-3.5 w-3.5" />}
               label={item.label}
+              value={item.value}
             />
           ))}
-        </div>
+        </TabsList>
+
         <div className="hidden md:flex mt-auto p-2  flex-col items-center gap-4 ">
           <ThemeToggle />
         </div>
@@ -56,16 +62,29 @@ export const IconSidebar = () => {
   );
 };
 
-function IconButton({ icon, label }: { icon: React.ReactNode; label: string }) {
+function IconButton({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className="flex items-center justify-center px-2 md:px-0">
-          <Button variant="ghost" size="icon" className="h-7 w-7">
-            {icon}
-            <span className="sr-only">{label}</span>
-          </Button>
-          <span className="md:hidden text-sm">{label}</span>
+        <div>
+          <TabsTrigger
+            value={value}
+            className="flex items-center justify-center data-[state=active]:text-chart-2 dark:data-[state=active]:text-chart-2 cursor-pointer"
+          >
+            <div className="h-7 w-7 flex items-center justify-center">
+              {icon}
+              <span className="sr-only">{label}</span>
+            </div>
+            <span className="md:hidden text-sm">{label}</span>
+          </TabsTrigger>{" "}
         </div>
       </TooltipTrigger>
       <TooltipContent side="left" className="text-xs hidden md:block">

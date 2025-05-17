@@ -1,3 +1,4 @@
+import { TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import React, { useEffect, useRef } from "react";
 
@@ -33,8 +34,26 @@ export const RightSideBar = ({ isOpen }: { isOpen: boolean }) => {
       )}
     >
       <div className="p-4 text-xs">
-        <h3 className="font-medium mb-2">Design Settings</h3>
-        <p>Design settings and options will appear here.</p>
+        <TabsContent value="outline">
+          <h3 className="font-medium mb-2">Outline Settings</h3>
+          <p>Design settings and options will appear here.</p>
+        </TabsContent>
+        <TabsContent value="assets">
+          <h3 className="font-medium mb-2">Assets Settings</h3>
+          <p>Design settings and options will appear here.</p>
+        </TabsContent>
+        <TabsContent value="material">
+          <h3 className="font-medium mb-2">Material Settings</h3>
+          <p>Design settings and options will appear here.</p>
+        </TabsContent>
+        <TabsContent value="environment">
+          <h3 className="font-medium mb-2">Environment Settings</h3>
+          <p>Design settings and options will appear here.</p>
+        </TabsContent>
+        <TabsContent value="postprocessing">
+          <h3 className="font-medium mb-2">Postprocessing Settings</h3>
+          <p>Design settings and options will appear here.</p>
+        </TabsContent>
       </div>
     </div>
   );
