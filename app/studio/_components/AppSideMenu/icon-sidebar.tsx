@@ -1,6 +1,5 @@
 import type React from "react";
 import { Box, ListTree, TentTree, SwatchBook, Blend } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,

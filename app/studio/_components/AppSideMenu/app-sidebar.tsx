@@ -2,7 +2,7 @@
 import * as React from "react";
 import { RightSideBar } from "./collapsed-sidebar";
 import { IconSidebar } from "./icon-sidebar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs } from "@/components/ui/tabs";
 
 export function AppSidebar({ isOpen }: { isOpen: boolean }) {
   return (
