@@ -1,6 +1,6 @@
 "use client";
 import { AppSidebar } from "./_components/AppSideMenu/app-sidebar";
-import { ViewerWrapper } from "./_components/viewer";
+import { ViewerWrapper } from "./_components/Viewport";
 
 import {
   Move3D,
