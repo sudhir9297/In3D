@@ -1,7 +1,16 @@
-import { Group, Mesh, Object3D } from "three";
+import { Group, Mesh, Object3D, REVISION } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { KTX2Loader } from "three/addons/loaders/KTX2Loader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
-import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+
+const THREE_PATH = `https://unpkg.com/three@0.${REVISION}.x`;
+const DRACO_LOADER = new DRACOLoader().setDecoderPath(
+  `${THREE_PATH}/examples/jsm/libs/draco/gltf/`
+);
+const KTX2_LOADER = new KTX2Loader().setTranscoderPath(
+  `${THREE_PATH}/examples/jsm/libs/basis/`
+);
 
 export async function loadGlbModel(file: File): Promise<Group | null> {
   const url = URL.createObjectURL(file);
@@ -24,13 +33,11 @@ export async function loadGlbModel(file: File): Promise<Group | null> {
       throw new Error("Invalid GLB file format");
     }
 
-    const loader = new GLTFLoader();
-    const dracoLoader = new DRACOLoader().setDecoderPath(
-      "https://www.gstatic.com/draco/v3/decoders/"
-    );
-    const ktx2Loader = new KTX2Loader();
-    loader.setDRACOLoader(dracoLoader);
-    loader.setKTX2Loader(ktx2Loader);
+    const loader = new GLTFLoader()
+      .setCrossOrigin("anonymous")
+      .setDRACOLoader(DRACO_LOADER)
+      .setKTX2Loader(KTX2_LOADER)
+      .setMeshoptDecoder(MeshoptDecoder);
 
     const model = await new Promise<Object3D>((resolve, reject) => {
       loader.load(
@@ -43,7 +50,15 @@ export async function loadGlbModel(file: File): Promise<Group | null> {
               child.castShadow = true;
               child.receiveShadow = true;
             }
+            // if (child.name === "") {
+            //   child.name = `Object_${child.id}`;
+            // }
           });
+
+          model.userData = {
+            fileName: file.name,
+            fileSize: file.size,
+          };
 
           resolve(model);
         },

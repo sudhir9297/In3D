@@ -92,7 +92,7 @@ export const ViewerWrapper = ({
 
         <color attach="background" args={["#f2f2f2"]} />
         <Environment preset="apartment" />
-        <SceneGrid />
+        {/* <SceneGrid /> */}
 
         <GizmoHelper alignment="bottom-right" margin={[60, 60]}>
           <GizmoViewport

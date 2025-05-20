@@ -16,7 +16,7 @@ import {
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const mainIcons = [
-  { icon: ListTree, label: "Outline", value: "outline" },
+  { icon: ListTree, label: "Scene Graph", value: "scenegraph" },
   { icon: SwatchBook, label: "Assets", value: "assets" },
   { icon: Box, label: "Material", value: "material" },
   { icon: TentTree, label: "Environment", value: "environment" },
@@ -33,7 +33,7 @@ export const IconSidebar = () => {
               {mainIcons.map((item) => (
                 <CarouselItem key={item.label}>
                   <IconButton
-                    icon={<item.icon className="h-3.5 w-3.5" />}
+                    icon={<item.icon className="h-4 w-4" />}
                     label={item.label}
                     value={item.value}
                   />
@@ -46,7 +46,7 @@ export const IconSidebar = () => {
           {mainIcons.map((item) => (
             <IconButton
               key={item.label}
-              icon={<item.icon className="h-3.5 w-3.5" />}
+              icon={<item.icon className="h-4 w-4" />}
               label={item.label}
               value={item.value}
             />

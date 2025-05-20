@@ -1,6 +1,7 @@
 import { TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import React, { useEffect, useRef } from "react";
+import SceneGraph from "./scene-graph";
 
 export const RightSideBar = ({ isOpen }: { isOpen: boolean }) => {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -33,10 +34,9 @@ export const RightSideBar = ({ isOpen }: { isOpen: boolean }) => {
         isOpen ? "block" : "hidden"
       )}
     >
-      <div className="p-4 text-xs">
-        <TabsContent value="outline">
-          <h3 className="font-medium mb-2">Outline Settings</h3>
-          <p>Design settings and options will appear here.</p>
+      <div className="text-xs py-3 px-2 overflow-y-auto h-full">
+        <TabsContent value="scenegraph">
+          <SceneGraph />
         </TabsContent>
         <TabsContent value="assets">
           <h3 className="font-medium mb-2">Assets Settings</h3>
