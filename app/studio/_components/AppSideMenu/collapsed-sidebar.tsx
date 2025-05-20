@@ -30,31 +30,32 @@ export const RightSideBar = ({ isOpen }: { isOpen: boolean }) => {
   return (
     <div
       className={cn(
-        "border-b md:border-l md:h-full flex-1",
+        "border-b md:border-l md:h-full h-full w-full md:py-3 px-1 text-xs",
         isOpen ? "block" : "hidden"
       )}
     >
-      <div className="text-xs py-3 px-2 overflow-y-auto h-full">
-        <TabsContent value="scenegraph">
-          <SceneGraph />
-        </TabsContent>
-        <TabsContent value="assets">
-          <h3 className="font-medium mb-2">Assets Settings</h3>
-          <p>Design settings and options will appear here.</p>
-        </TabsContent>
-        <TabsContent value="material">
-          <h3 className="font-medium mb-2">Material Settings</h3>
-          <p>Design settings and options will appear here.</p>
-        </TabsContent>
-        <TabsContent value="environment">
-          <h3 className="font-medium mb-2">Environment Settings</h3>
-          <p>Design settings and options will appear here.</p>
-        </TabsContent>
-        <TabsContent value="postprocessing">
-          <h3 className="font-medium mb-2">Postprocessing Settings</h3>
-          <p>Design settings and options will appear here.</p>
-        </TabsContent>
-      </div>
+      <TabsContent
+        value="scenegraph"
+        className="h-full pb-10 md:pb-6 overflow-auto "
+      >
+        <SceneGraph />
+      </TabsContent>
+      <TabsContent value="assets">
+        <h3 className="font-medium mb-2">Assets Settings</h3>
+        <p>Design settings and options will appear here.</p>
+      </TabsContent>
+      <TabsContent value="material">
+        <h3 className="font-medium mb-2">Material Settings</h3>
+        <p>Design settings and options will appear here.</p>
+      </TabsContent>
+      <TabsContent value="environment">
+        <h3 className="font-medium mb-2">Environment Settings</h3>
+        <p>Design settings and options will appear here.</p>
+      </TabsContent>
+      <TabsContent value="postprocessing">
+        <h3 className="font-medium mb-2">Postprocessing Settings</h3>
+        <p>Design settings and options will appear here.</p>
+      </TabsContent>
     </div>
   );
 };

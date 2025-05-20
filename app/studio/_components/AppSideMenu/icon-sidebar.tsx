@@ -26,7 +26,7 @@ const mainIcons = [
 export const IconSidebar = () => {
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="w-full md:h-screen md:w-10  h-10 border-b flex md:flex-col bg-background  ">
+      <div className="w-full md:h-screen md:w-10 h-10 border-b flex md:flex-col bg-background  ">
         <Carousel className="md:hidden" arrow>
           <TabsList>
             <CarouselContent className="gap-2">

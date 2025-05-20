@@ -5,7 +5,10 @@ import {
   Box,
   ChevronDown,
   ChevronRight,
+  Eye,
+  EyeOff,
   Folder,
+  Globe,
   Layers,
   Palette,
   Pentagon,
@@ -18,7 +21,7 @@ const SceneGraph = () => {
     return (
       <div className="p-6 text-center ">
         <p className="font-medium mb-2">No models In the Scene</p>
-        <p className="mt-4 text-xs text-muted-foreground">
+        <p className="mt-4  text-muted-foreground">
           Drag and drop 3D model files to view their scene graph.
         </p>
       </div>
@@ -26,23 +29,21 @@ const SceneGraph = () => {
   }
 
   return (
-    <div>
-      <div className="space-y-4">
-        {objects.map((object, index) => (
-          <div
-            key={`${object.userData?.fileName}-${index}`}
-            className="border-b border-border  last:border-b-0"
-          >
-            <SceneNode
-              object={object}
-              level={0}
-              isRoot
-              modelIndex={index}
-              filename={object.userData?.fileName}
-            />
-          </div>
-        ))}
-      </div>
+    <div className="space-y-4">
+      {objects.map((object, index) => (
+        <div
+          key={`${object.userData?.fileName}-${index}`}
+          className="border-b border-border  last:border-b-0"
+        >
+          <SceneNode
+            object={object}
+            level={0}
+            isRoot
+            modelIndex={index}
+            filename={object.userData?.fileName}
+          />
+        </div>
+      ))}
     </div>
   );
 };
@@ -60,7 +61,7 @@ interface SceneNodeProps {
 function SceneNode({ object, level, isRoot, filename }: SceneNodeProps) {
   const [expanded, setExpanded] = useState(isRoot);
   const hasChildren = object.children.length > 0;
-  const indentation = level * 16;
+  const indentation = level * 14;
 
   const toggleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -68,11 +69,11 @@ function SceneNode({ object, level, isRoot, filename }: SceneNodeProps) {
   };
 
   const getNodeIcon = () => {
-    if (hasChildren) return <Folder className="w-4 h-4 text-primary" />;
+    if (isRoot) return <Globe className="w-4 h-4 " />;
     if (object instanceof Mesh)
       return <Box strokeWidth={1.5} className="w-4 h-4 text-primary" />;
     if (object instanceof Group)
-      return <Pentagon className="w-4 h-4 text-primary" />;
+      return <Folder className="w-4 h-4 text-green-500" />;
     if (object instanceof Material)
       return <Palette className="w-4 h-4 text-primary" />;
     return <Layers className="w-4 h-4 text-primary" />;
@@ -87,7 +88,7 @@ function SceneNode({ object, level, isRoot, filename }: SceneNodeProps) {
         style={{ paddingLeft: `${indentation}px` }}
       >
         {hasChildren && (
-          <button onClick={toggleExpand} className="p-1">
+          <button onClick={toggleExpand} className="px-0.5">
             {expanded ? (
               <ChevronDown className="w-4 h-4 text-muted-foreground" />
             ) : (

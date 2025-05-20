@@ -3,6 +3,8 @@ import { AppSidebar } from "./_components/AppSideMenu/app-sidebar";
 import { ViewerWrapper } from "./_components/Viewport";
 
 import {
+  MousePointerClick,
+  MousePointerIcon,
   Move3D,
   PanelRight,
   Rotate3D,
@@ -15,10 +17,10 @@ export default function Page() {
   const [isCollapsibleMenuOpen, setIsCollapsibleMenuOpen] = useState(true);
 
   const tools = [
+    { icon: MousePointerClick, label: "Select" },
     { icon: Move3D, label: "Move" },
     { icon: Rotate3D, label: "Rotate" },
     { icon: Scale3D, label: "Scale" },
-    { icon: SquareMousePointer, label: "Select" },
   ];
 
   return (
@@ -37,7 +39,7 @@ export default function Page() {
                 aria-label={tool.label}
                 title={tool.label}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-5 h-5" strokeWidth={1.5} />
               </button>
             );
           })}
