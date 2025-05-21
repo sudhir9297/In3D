@@ -4,12 +4,10 @@ import { ViewerWrapper } from "./_components/Viewport";
 
 import {
   MousePointerClick,
-  MousePointerIcon,
   Move3D,
   PanelRight,
   Rotate3D,
   Scale3D,
-  SquareMousePointer,
 } from "lucide-react";
 import { useState } from "react";
 

@@ -13,7 +13,6 @@ import * as THREE from "three";
 import Scene from "./scene";
 import { loadGlbModel } from "../../utils/modelLoaders";
 import { useModelStore } from "../../store/modelStore";
-import SceneGrid from "./scene-grid";
 import { cn } from "@/lib/utils";
 
 export const ViewerWrapper = ({

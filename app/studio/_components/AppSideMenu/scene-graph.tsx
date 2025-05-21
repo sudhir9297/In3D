@@ -1,22 +1,14 @@
-"use client";
-
 import React, { useState, createContext, useContext } from "react";
 import { useModelStore } from "../../store/modelStore";
 import { Material, Mesh, Object3D, Group } from "three";
 import {
-  Box,
   ChevronDown,
   ChevronRight,
-  Eye,
-  EyeOff,
   Folder,
-  Globe,
   Layers,
   Palette,
   Pentagon,
-  File,
-  Package,
-  Square,
+  Cuboid,
 } from "lucide-react";
 
 // Create a context for selection state
@@ -100,8 +92,8 @@ function SceneNode({
   };
 
   const getNodeIcon = () => {
-    if (isRoot) return <Globe className="w-4 h-4" />;
-    if (object instanceof Mesh) return <Square className="w-4 h-4 " />;
+    if (isRoot) return <Pentagon className="w-4 h-4" />;
+    if (object instanceof Mesh) return <Cuboid className="w-4 h-4 " />;
     if (object instanceof Group) return <Folder className="w-4 h-4 " />;
     if (object instanceof Material) return <Palette className="w-4 h-4 " />;
     return <Layers className="w-4 h-4 " />;
