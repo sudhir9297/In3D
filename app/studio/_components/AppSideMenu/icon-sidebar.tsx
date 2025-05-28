@@ -26,8 +26,11 @@ const mainIcons = [
 export const IconSidebar = () => {
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="w-full md:h-screen md:w-10 h-10 border-b flex md:flex-col bg-background  ">
-        <Carousel className="md:hidden" arrow>
+      <div className="w-full md:h-screen md:w-10 h-10 border-b flex md:flex-col bg-background   ">
+        <div className="hidden md:flex pt-1 px-0.5  items-center justify-center ">
+          <img src="/logo.svg" alt="Logo" />
+        </div>
+        <Carousel className="md:hidden " arrow>
           <TabsList>
             <CarouselContent className="gap-2">
               {mainIcons.map((item) => (

@@ -36,24 +36,27 @@ export const RightSideBar = ({ isOpen }: { isOpen: boolean }) => {
     >
       <TabsContent
         value="scenegraph"
-        className="h-full pb-10 md:pb-6 overflow-auto "
+        className="h-full pb-10 md:pb-6 overflow-hidden "
       >
+        <h3 className="font-medium text-sm px-3 mb-2">Scene Outline</h3>
         <SceneGraph />
       </TabsContent>
       <TabsContent value="assets">
-        <h3 className="font-medium mb-2">Assets Settings</h3>
+        <h3 className="font-medium text-sm px-3 mb-2">Assets Settings</h3>
         <p>Design settings and options will appear here.</p>
       </TabsContent>
       <TabsContent value="material">
-        <h3 className="font-medium mb-2">Material Settings</h3>
+        <h3 className="font-medium text-sm px-3 mb-2">Material Settings</h3>
         <p>Design settings and options will appear here.</p>
       </TabsContent>
       <TabsContent value="environment">
-        <h3 className="font-medium mb-2">Environment Settings</h3>
+        <h3 className="font-medium text-sm px-3 mb-2">Environment Settings</h3>
         <p>Design settings and options will appear here.</p>
       </TabsContent>
       <TabsContent value="postprocessing">
-        <h3 className="font-medium mb-2">Postprocessing Settings</h3>
+        <h3 className="font-medium text-sm px-3 mb-2">
+          Postprocessing Settings
+        </h3>
         <p>Design settings and options will appear here.</p>
       </TabsContent>
     </div>
