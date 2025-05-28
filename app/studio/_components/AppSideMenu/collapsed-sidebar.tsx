@@ -30,7 +30,7 @@ export const RightSideBar = ({ isOpen }: { isOpen: boolean }) => {
   return (
     <div
       className={cn(
-        "border-b md:border-l md:h-full h-full w-full md:py-3 px-1 text-xs",
+        "relative border-b md:border-l md:h-full h-full w-full md:py-3 px-1 text-xs",
         isOpen ? "block" : "hidden"
       )}
     >

@@ -12,12 +12,14 @@ export function useResponsiveCanvas(
 
   useEffect(() => {
     const updateDimensions = () => {
-      if (!containerRef.current || !canvasRef.current) return;
+      if (!containerRef.current) return;
 
       if (isMobile) {
         // For mobile: make both elements full screen regardless of sidebar state
         containerRef.current.style.width = "100%";
-        canvasRef.current.style.width = "100%";
+        if (canvasRef.current) {
+          canvasRef.current.style.width = "100%";
+        }
       } else {
         // For desktop: adjust width based on sidebar state
         const totalWidth = window.innerWidth;
@@ -25,7 +27,9 @@ export function useResponsiveCanvas(
         const remainingWidth = totalWidth - effectiveSidebarWidth;
 
         containerRef.current.style.width = `${remainingWidth}px`;
-        canvasRef.current.style.width = `${remainingWidth}px`;
+        if (canvasRef.current) {
+          canvasRef.current.style.width = `${remainingWidth}px`;
+        }
       }
 
       // Dispatch resize event to ensure Three.js/R3F updates properly

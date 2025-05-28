@@ -14,6 +14,7 @@ import Scene from "./scene";
 import { loadGlbModel } from "../../utils/modelLoaders";
 import { useModelStore } from "../../store/modelStore";
 import { cn } from "@/lib/utils";
+import Dropzone from "./dropzone";
 
 export const ViewerWrapper = ({
   sidebarIsOpen,
@@ -23,6 +24,7 @@ export const ViewerWrapper = ({
   const SIDEBAR_WIDTH = 400;
   const [isDragging, setIsDragging] = useState(false);
   const addObject = useModelStore((state) => state.addObject);
+  const objects = useModelStore((state) => state.objects);
 
   const { containerRef, canvasRef } = useResponsiveCanvas(
     sidebarIsOpen,
@@ -62,9 +64,11 @@ export const ViewerWrapper = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {objects.length === 0 && <Dropzone />}
+
       <Canvas
         ref={canvasRef}
-        className="w-full h-full"
+        className="absolute top-0 left-0 w-full h-full"
         onCreated={({ gl }) => {
           gl.shadowMap.enabled = true;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -91,7 +95,6 @@ export const ViewerWrapper = ({
 
         <color attach="background" args={["#f2f2f2"]} />
         <Environment preset="apartment" />
-        {/* <SceneGrid /> */}
 
         <GizmoHelper alignment="bottom-right" margin={[60, 60]}>
           <GizmoViewport

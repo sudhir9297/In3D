@@ -11,20 +11,8 @@ import {
   Cuboid,
 } from "lucide-react";
 
-// Create a context for selection state
-type SceneSelectionContextType = {
-  selectedId: string | null;
-  setSelectedId: (id: string | null) => void;
-};
-
-const SceneSelectionContext = createContext<SceneSelectionContextType>({
-  selectedId: null,
-  setSelectedId: () => {},
-});
-
 const SceneGraph = () => {
-  const { objects } = useModelStore();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { objects, selectedObject, setSelectedObject } = useModelStore();
 
   if (objects.length === 0) {
     return (
@@ -38,24 +26,24 @@ const SceneGraph = () => {
   }
 
   return (
-    <SceneSelectionContext.Provider value={{ selectedId, setSelectedId }}>
-      <div className="">
-        {objects.map((object, index) => (
-          <div key={`${object.userData?.fileName}-${index}`} className="">
-            <ul className="pl-2">
-              <SceneNode
-                object={object}
-                level={0}
-                isRoot
-                modelIndex={index}
-                filename={object.userData?.fileName}
-                isLast={index === objects.length - 1}
-              />
-            </ul>
-          </div>
-        ))}
-      </div>
-    </SceneSelectionContext.Provider>
+    <div className="">
+      {objects.map((object, index) => (
+        <div key={`${object.userData?.fileName}-${index}`} className="">
+          <ul className="pl-2">
+            <SceneNode
+              object={object}
+              level={0}
+              isRoot
+              modelIndex={index}
+              filename={object.userData?.fileName}
+              isLast={index === objects.length - 1}
+              selectedObject={selectedObject}
+              setSelectedObject={setSelectedObject}
+            />
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 };
 
@@ -68,6 +56,8 @@ interface SceneNodeProps {
   filename?: string;
   modelIndex?: number;
   isLast?: boolean;
+  selectedObject: Object3D | null;
+  setSelectedObject: (object: Object3D | null) => void;
 }
 
 function SceneNode({
@@ -76,11 +66,13 @@ function SceneNode({
   isRoot,
   filename,
   isLast = false,
+  selectedObject,
+  setSelectedObject,
 }: SceneNodeProps) {
   const [expanded, setExpanded] = useState(isRoot);
-  const { selectedId, setSelectedId } = useContext(SceneSelectionContext);
+
   const hasChildren = object.children.length > 0;
-  const isSelected = selectedId === object.uuid;
+  const isSelected = selectedObject === object;
 
   const toggleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -88,7 +80,7 @@ function SceneNode({
   };
 
   const handleClick = () => {
-    setSelectedId(object.uuid);
+    setSelectedObject(object);
   };
 
   const getNodeIcon = () => {
@@ -174,6 +166,8 @@ function SceneNode({
               object={child}
               level={level + 1}
               isLast={index === object.children.length - 1}
+              selectedObject={selectedObject}
+              setSelectedObject={setSelectedObject}
             />
           ))}
         </ul>
