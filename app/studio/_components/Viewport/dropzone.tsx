@@ -5,7 +5,7 @@ import { loadGlbModel } from "../../utils/modelLoaders";
 import { cn } from "@/lib/utils";
 
 const Dropzone = () => {
-  const [isDragging, setIsDragging] = useState<Boolean>(false);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
   const { addObject } = useModelStore();
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
