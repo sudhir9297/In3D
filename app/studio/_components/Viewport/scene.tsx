@@ -1,17 +1,36 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { ModelStore, useModelStore } from "../../store/modelStore";
 import { Matrix4, Object3D, Quaternion, Vector3 } from "three";
 import { PivotControls } from "@react-three/drei";
+import { highlightMesh } from "../../utils/common";
+import { useViewportStore } from "../../store/viewportStore";
+import useClickOrDrag from "../../hooks/useClickOrDrag";
+import { ThreeEvent } from "@react-three/fiber";
 
 const Scene = () => {
   const worldMatrixRef = useRef(new Matrix4());
   const { objects, setSelectedObject, selectedObject } = useModelStore(
     (state: ModelStore) => state
   );
+  const isEditorMode = useViewportStore((state) => state.isEditorMode);
 
-  const handleClick = (object: Object3D): void => {
+  useEffect(() => {
+    if (selectedObject) {
+      highlightMesh(selectedObject);
+    }
+  }, [selectedObject]);
+
+  const handleClick = (
+    action: string,
+    event: ThreeEvent<PointerEvent>
+  ): void => {
+    event.stopPropagation();
     // we will be handling the selection logic here with filtration later on
-    setSelectedObject(object);
+    if (action === "click") {
+      const object = event.object as Object3D;
+
+      setSelectedObject(object);
+    }
   };
 
   // Capture drag world matrix continuously
@@ -61,7 +80,7 @@ const Scene = () => {
         <Model key={index} object={object} onSelect={handleClick} />
       ))}
 
-      {selectedObject && (
+      {isEditorMode && selectedObject && (
         <PivotControls
           anchor={[0, 0, 0]}
           scale={1}
@@ -88,14 +107,14 @@ function Model({
   onSelect,
 }: {
   object: Object3D;
-  onSelect: (e: Object3D) => void;
+  onSelect: (action: string, event: ThreeEvent<PointerEvent>) => void;
 }) {
+  const { onMouseDown, onMouseUp } = useClickOrDrag();
+
   return (
     <group
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect(e.object);
-      }}
+      onPointerUp={(event) => onMouseUp(event, onSelect)}
+      onPointerDown={onMouseDown}
     >
       <primitive object={object} />
     </group>

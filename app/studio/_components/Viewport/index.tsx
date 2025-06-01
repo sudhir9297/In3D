@@ -1,4 +1,5 @@
 "use client";
+import * as THREE from "three";
 import React, { useCallback, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import {
@@ -8,13 +9,14 @@ import {
   GizmoViewport,
   OrbitControls,
 } from "@react-three/drei";
-import { useResponsiveCanvas } from "../../hooks/useResponsiveCanvas";
-import * as THREE from "three";
+import { cn } from "@/lib/utils";
 import Scene from "./scene";
 import { loadGlbModel } from "../../utils/modelLoaders";
 import { useModelStore } from "../../store/modelStore";
-import { cn } from "@/lib/utils";
+import { useViewportStore } from "../../store/viewportStore";
+import { useResponsiveCanvas } from "../../hooks/useResponsiveCanvas";
 import Dropzone from "./dropzone";
+import SceneGrid from "./scene-grid";
 
 export const ViewerWrapper = ({
   sidebarIsOpen,
@@ -25,6 +27,7 @@ export const ViewerWrapper = ({
   const [isDragging, setIsDragging] = useState(false);
   const addObject = useModelStore((state) => state.addObject);
   const objects = useModelStore((state) => state.objects);
+  const showGrid = useViewportStore((state) => state.showGrid);
 
   const { containerRef, canvasRef } = useResponsiveCanvas(
     sidebarIsOpen,
@@ -64,7 +67,7 @@ export const ViewerWrapper = ({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {objects.length === 0 && <Dropzone />}
+      {objects.length === 0 && <Dropzone isDragging={isDragging} />}
 
       <Canvas
         ref={canvasRef}
@@ -95,6 +98,7 @@ export const ViewerWrapper = ({
 
         <color attach="background" args={["#f2f2f2"]} />
         <Environment preset="apartment" />
+        {showGrid && <SceneGrid />}
 
         <GizmoHelper alignment="bottom-right" margin={[60, 60]}>
           <GizmoViewport

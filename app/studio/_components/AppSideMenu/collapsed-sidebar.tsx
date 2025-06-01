@@ -30,15 +30,14 @@ export const RightSideBar = ({ isOpen }: { isOpen: boolean }) => {
   return (
     <div
       className={cn(
-        "relative border-b md:border-l md:h-full h-full w-full md:py-3 px-1 text-xs",
+        "relative border-b md:border-l md:h-full h-full w-full md:py-3 px-1 text-xs transition-all duration-300 ease-in-out",
         isOpen ? "block" : "hidden"
       )}
     >
       <TabsContent
         value="scenegraph"
-        className="h-full pb-10 md:pb-6 overflow-hidden "
+        className="h-full pb-10 md:pb-6 overflow-auto  "
       >
-        <h3 className="font-medium text-sm px-3 mb-2">Scene Outline</h3>
         <SceneGraph />
       </TabsContent>
       <TabsContent value="assets">

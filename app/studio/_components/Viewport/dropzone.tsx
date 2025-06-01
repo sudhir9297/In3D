@@ -1,34 +1,10 @@
 import React, { useCallback } from "react";
-import { useState } from "react";
 import { useModelStore } from "../../store/modelStore";
 import { loadGlbModel } from "../../utils/modelLoaders";
 import { cn } from "@/lib/utils";
 
-const Dropzone = () => {
-  const [isDragging, setIsDragging] = useState<boolean>(false);
+const Dropzone = ({ isDragging }: { isDragging: boolean }) => {
   const { addObject } = useModelStore();
-
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      setIsDragging(false);
-
-      Array.from(e.dataTransfer.files).forEach(async (file) => {
-        const object = await loadGlbModel(file);
-        if (object) addObject(object);
-      });
-    },
-    [addObject]
-  );
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,11 +25,8 @@ const Dropzone = () => {
         "w-full z-40 h-full flex flex-col absolute top-0 left-0  items-center justify-center p-8 transition-all duration-300",
         isDragging ? "bg-gray-100" : "bg-gray-50"
       )}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
     >
-      <h2 className="text-lg font-medium mb-2 text-center">
+      <h2 className="text-lg font-medium mb-2 text-center text-black">
         {isDragging ? "Drop to load models" : "Drag & Drop 3D Models"}
       </h2>
 

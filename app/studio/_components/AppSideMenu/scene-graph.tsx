@@ -8,7 +8,7 @@ import {
   Layers,
   Palette,
   Pentagon,
-  Cuboid,
+  Box,
 } from "lucide-react";
 
 const SceneGraph = () => {
@@ -27,6 +27,7 @@ const SceneGraph = () => {
 
   return (
     <div className="">
+      <h3 className="font-medium text-sm px-3 mb-2">Scene Outline</h3>
       {objects.map((object, index) => (
         <div key={`${object.userData?.fileName}-${index}`} className="">
           <ul className="pl-2">
@@ -85,7 +86,7 @@ function SceneNode({
 
   const getNodeIcon = () => {
     if (isRoot) return <Pentagon className="w-4 h-4" />;
-    if (object instanceof Mesh) return <Cuboid className="w-4 h-4 " />;
+    if (object instanceof Mesh) return <Box className="w-4 h-4 " />;
     if (object instanceof Group) return <Folder className="w-4 h-4 " />;
     if (object instanceof Material) return <Palette className="w-4 h-4 " />;
     return <Layers className="w-4 h-4 " />;
@@ -112,8 +113,8 @@ function SceneNode({
       )}
 
       <div
-        className={`flex items-center py-1 cursor-pointer group  ${
-          isSelected ? "text-green-500" : ""
+        className={`flex items-center py-1 cursor-pointer rounded-xs group hover:bg-accent ${
+          isSelected ? "text-chart-2 bg-accent" : ""
         }`}
         onClick={handleClick}
       >
@@ -136,10 +137,8 @@ function SceneNode({
             <span className="mr-1.5">{getNodeIcon()}</span>
 
             <span
-              className={`group-hover:underline truncate ${
-                isSelected
-                  ? "text-green-500"
-                  : "text-gray-700 dark:text-gray-200"
+              className={` truncate ${
+                isSelected ? "text-chart-2" : "text-gray-700 dark:text-gray-200"
               }`}
               style={{ maxWidth: "160px" }}
             >
