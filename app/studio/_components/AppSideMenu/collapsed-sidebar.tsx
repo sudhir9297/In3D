@@ -36,7 +36,7 @@ export const RightSideBar = ({ isOpen }: { isOpen: boolean }) => {
     >
       <TabsContent
         value="scenegraph"
-        className="h-full pb-10 md:pb-6 overflow-auto  "
+        className="h-full pb-10 md:pb-6 overflow-y-auto overflow-x-hidden  "
       >
         <SceneGraph />
       </TabsContent>

@@ -9,7 +9,20 @@ import {
   Palette,
   Pentagon,
   Box,
+  Circle,
+  PackageOpenIcon,
+  FolderIcon,
+  FolderOpen,
+  CircleDashed,
 } from "lucide-react";
+
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/animate-ui/base/toggle-group";
+import { AnimateIcon } from "@/components/animate-ui/icons/icon";
+import { AnimatePresence } from "motion/react";
+import { MotionHighlightItem } from "@/components/animate-ui/effects/motion-highlight";
 
 const SceneGraph = () => {
   const { objects, selectedObject, setSelectedObject } = useModelStore();
@@ -30,17 +43,22 @@ const SceneGraph = () => {
       <h3 className="font-medium text-sm px-3 mb-2">Scene Outline</h3>
       {objects.map((object, index) => (
         <div key={`${object.userData?.fileName}-${index}`} className="">
-          <ul className="pl-2">
-            <SceneNode
-              object={object}
-              level={0}
-              isRoot
-              modelIndex={index}
-              filename={object.userData?.fileName}
-              isLast={index === objects.length - 1}
-              selectedObject={selectedObject}
-              setSelectedObject={setSelectedObject}
-            />
+          <ul>
+            <ToggleGroup
+              defaultValue={[object.userData?.fileName]}
+              toggleMultiple={false}
+            >
+              <SceneNode
+                object={object}
+                level={0}
+                isRoot
+                modelIndex={index}
+                filename={object.userData?.fileName}
+                isLast={index === objects.length - 1}
+                selectedObject={selectedObject}
+                setSelectedObject={setSelectedObject}
+              />
+            </ToggleGroup>
           </ul>
         </div>
       ))}
@@ -84,22 +102,41 @@ function SceneNode({
     setSelectedObject(object);
   };
 
-  const getNodeIcon = () => {
-    if (isRoot) return <Pentagon className="w-4 h-4" />;
-    if (object instanceof Mesh) return <Box className="w-4 h-4 " />;
-    if (object instanceof Group) return <Folder className="w-4 h-4 " />;
+  const getNodeIcon = (isOpen: boolean | undefined, isActive: boolean) => {
+    if (isRoot || object instanceof Group)
+      return (
+        <AnimatePresence mode="wait">
+          {isOpen && isOpen ? (
+            <FolderOpen className="w-4 h-4" />
+          ) : (
+            <Folder className="w-4 h-4" />
+          )}
+        </AnimatePresence>
+      );
+
+    if (object instanceof Mesh)
+      return (
+        <AnimatePresence mode="wait">
+          {isActive ? (
+            <CircleDashed className="w-4 h-4" />
+          ) : (
+            <Circle className="w-4 h-4" />
+          )}
+        </AnimatePresence>
+      );
+
     if (object instanceof Material) return <Palette className="w-4 h-4 " />;
     return <Layers className="w-4 h-4 " />;
   };
 
   return (
-    <li className="relative">
+    <li className="relative w-full">
       {/* Vertical line from parent to this item's position */}
       {level > 0 && (
         <div
-          className="absolute left-[-16px] top-0 w-[1px] bg-gray-300 dark:bg-gray-600"
+          className="absolute left-[-16px] top-0 w-[1px] bg-gray-300 dark:bg-gray-600 "
           style={{
-            height: isLast && !hasChildren ? "15px" : "100%",
+            height: isLast && !hasChildren ? "16px" : "100%",
           }}
         />
       )}
@@ -108,57 +145,71 @@ function SceneNode({
       {level > 0 && (
         <div
           className="absolute h-[1px] bg-gray-300 dark:bg-gray-600"
-          style={{ left: "-16px", top: "14px", width: "16px" }}
+          style={{
+            left: "-16px",
+            top: "16px",
+            width: "16px",
+          }}
         />
       )}
 
       <div
-        className={`flex items-center py-1 cursor-pointer rounded-xs group hover:bg-accent ${
-          isSelected ? "text-chart-2 bg-accent" : ""
+        className={`flex items-center cursor-pointer group rounded-md hover:bg-accent  ${
+          isSelected ? "text-chart-2 bg-accent rounded-md" : ""
         }`}
         onClick={handleClick}
       >
-        <button
-          onClick={toggleExpand}
-          className={`w-5 h-5 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 ${
-            !hasChildren ? "invisible" : ""
-          }`}
-          aria-label={expanded ? "Collapse" : "Expand"}
+        <ToggleGroupItem
+          value={isRoot ? filename : object.name || object.type}
+          aria-label="Toggle bold"
+          className="w-full px-2"
         >
-          {expanded ? (
-            <ChevronDown size={16} strokeWidth={1.5} />
-          ) : (
-            <ChevronRight size={16} strokeWidth={1.5} />
-          )}
-        </button>
-
-        <div className="flex items-center ml-1 text-sm w-full justify-between pr-2">
-          <div className="flex items-center">
-            <span className="mr-1.5">{getNodeIcon()}</span>
-
-            <span
-              className={` truncate ${
-                isSelected ? "text-chart-2" : "text-gray-700 dark:text-gray-200"
-              }`}
-              style={{ maxWidth: "160px" }}
-            >
-              {isRoot ? filename : object.name || object.type}
-            </span>
+          <div
+            onClick={toggleExpand}
+            className={`w-5 h-5 flex  items-center justify-center ${
+              !hasChildren ? "invisible" : ""
+            }`}
+            aria-label={expanded ? "Collapse" : "Expand"}
+          >
+            {expanded ? (
+              <ChevronDown size={16} strokeWidth={1.5} />
+            ) : (
+              <ChevronRight size={16} strokeWidth={1.5} />
+            )}
           </div>
 
-          {object instanceof Mesh && (
-            <span className="text-[10px] text-muted-foreground">
-              {(
-                object.geometry.attributes.position?.count || 0
-              ).toLocaleString()}{" "}
-              verts
-            </span>
-          )}
-        </div>
+          <div className="flex items-center  text-sm w-full justify-between  pr-2 ">
+            <div className="flex items-center">
+              <span className="mr-1.5">
+                {getNodeIcon(expanded, isSelected)}
+              </span>
+
+              <span
+                className={`truncate ${
+                  isSelected
+                    ? "text-chart-2"
+                    : "text-gray-700 dark:text-gray-200"
+                }`}
+                style={{ maxWidth: "160px" }}
+              >
+                {isRoot ? filename : object.name || object.type}
+              </span>
+            </div>
+
+            {object instanceof Mesh && (
+              <span className="text-[10px] text-muted-foreground">
+                {(
+                  object.geometry.attributes.position?.count || 0
+                ).toLocaleString()}{" "}
+                verts
+              </span>
+            )}
+          </div>
+        </ToggleGroupItem>
       </div>
 
       {expanded && hasChildren && (
-        <ul className="pl-4 ml-2 ">
+        <ul className="pl-4 ml-4 ">
           {object.children.map((child, index) => (
             <SceneNode
               key={`${child.uuid}-${index}`}

@@ -1,11 +1,5 @@
 import type React from "react";
 import { Box, ListTree, TentTree, SwatchBook, Blend } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 import {
@@ -14,6 +8,12 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel";
 import { TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/animate-ui/components/tooltip";
 
 const mainIcons = [
   { icon: ListTree, label: "Scene Graph", value: "scenegraph" },
@@ -25,7 +25,7 @@ const mainIcons = [
 
 export const IconSidebar = () => {
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider openDelay={400}>
       <div className="w-full md:h-screen md:w-10 h-10 border-b flex md:flex-col bg-background   ">
         <div className="hidden md:flex pt-1 px-0.5  items-center justify-center ">
           <img src="/logo.svg" alt="Logo" />
@@ -74,8 +74,8 @@ function IconButton({
   value: string;
 }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
+    <Tooltip side="left">
+      <TooltipTrigger>
         <div>
           <TabsTrigger
             value={value}
@@ -89,9 +89,7 @@ function IconButton({
           </TabsTrigger>{" "}
         </div>
       </TooltipTrigger>
-      <TooltipContent side="left" className="text-xs hidden md:block">
-        {label}
-      </TooltipContent>
+      <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );
 }
