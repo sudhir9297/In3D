@@ -1,5 +1,5 @@
 import type React from "react";
-import { Box, ListTree, TentTree, SwatchBook, Blend } from "lucide-react";
+import { Box, TentTree, Blend } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 import {
@@ -16,8 +16,6 @@ import {
 } from "@/components/animate-ui/components/tooltip";
 
 const mainIcons = [
-  { icon: ListTree, label: "Scene Graph", value: "scenegraph" },
-  { icon: SwatchBook, label: "Assets", value: "assets" },
   { icon: Box, label: "Material", value: "material" },
   { icon: TentTree, label: "Environment", value: "environment" },
   { icon: Blend, label: "Post Processing", value: "postprocessing" },
@@ -27,9 +25,6 @@ export const IconSidebar = () => {
   return (
     <TooltipProvider openDelay={400}>
       <div className="w-full md:h-screen md:w-10 h-10 border-b flex md:flex-col bg-background   ">
-        <div className="hidden md:flex pt-1 px-0.5  items-center justify-center ">
-          <img src="/logo.svg" alt="Logo" />
-        </div>
         <Carousel className="md:hidden " arrow>
           <TabsList>
             <CarouselContent className="gap-2">

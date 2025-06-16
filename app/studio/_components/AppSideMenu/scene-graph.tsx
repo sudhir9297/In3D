@@ -7,11 +7,7 @@ import {
   Folder,
   Layers,
   Palette,
-  Pentagon,
-  Box,
   Circle,
-  PackageOpenIcon,
-  FolderIcon,
   FolderOpen,
   CircleDashed,
 } from "lucide-react";
@@ -20,9 +16,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/animate-ui/base/toggle-group";
-import { AnimateIcon } from "@/components/animate-ui/icons/icon";
+
 import { AnimatePresence } from "motion/react";
-import { MotionHighlightItem } from "@/components/animate-ui/effects/motion-highlight";
 
 const SceneGraph = () => {
   const { objects, selectedObject, setSelectedObject } = useModelStore();
@@ -39,8 +34,7 @@ const SceneGraph = () => {
   }
 
   return (
-    <div className="">
-      <h3 className="font-medium text-sm px-3 mb-2">Scene Outline</h3>
+    <div className="h-full">
       {objects.map((object, index) => (
         <div key={`${object.userData?.fileName}-${index}`} className="">
           <ul>
@@ -196,14 +190,14 @@ function SceneNode({
               </span>
             </div>
 
-            {object instanceof Mesh && (
+            {/* {object instanceof Mesh && (
               <span className="text-[10px] text-muted-foreground">
                 {(
                   object.geometry.attributes.position?.count || 0
                 ).toLocaleString()}{" "}
                 verts
               </span>
-            )}
+            )} */}
           </div>
         </ToggleGroupItem>
       </div>

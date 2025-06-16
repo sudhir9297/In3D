@@ -10,10 +10,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/animate-ui/components/tooltip";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/animate-ui/base/toggle-group";
 
 export const Toolbar = () => {
   const { showGrid, isEditorMode, toggleGrid, toggleEditorMode } =

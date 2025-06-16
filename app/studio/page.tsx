@@ -1,6 +1,4 @@
 "use client";
-import { PanelRight } from "@/components/animate-ui/icons/panel-right";
-import { AppSidebar } from "./_components/AppSideMenu/app-sidebar";
 import { ViewerWrapper } from "./_components/Viewport";
 
 import { useState } from "react";
