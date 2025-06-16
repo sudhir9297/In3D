@@ -47,7 +47,7 @@ export const Toolbar = () => {
   ];
 
   return (
-    <div className="absolute z-50 left-4 top-10 border px-1 py-1.5 rounded-lg bg-background shadow-md">
+    <div className="absolute z-50 -right-14 top-16 border px-1 py-1.5 rounded-lg bg-background shadow-md">
       <TooltipProvider openDelay={400}>
         <div className="flex flex-col  ">
           {tools.map((tool) => (

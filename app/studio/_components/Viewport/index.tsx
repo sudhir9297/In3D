@@ -14,25 +14,15 @@ import Scene from "./scene";
 import { loadGlbModel } from "../../utils/modelLoaders";
 import { useModelStore } from "../../store/modelStore";
 import { useViewportStore } from "../../store/viewportStore";
-import { useResponsiveCanvas } from "../../hooks/useResponsiveCanvas";
+
 import Dropzone from "./dropzone";
 import SceneGrid from "./scene-grid";
 
-export const ViewerWrapper = ({
-  sidebarIsOpen,
-}: {
-  sidebarIsOpen: boolean;
-}) => {
-  const SIDEBAR_WIDTH = 400;
+export const ViewerWrapper = () => {
   const [isDragging, setIsDragging] = useState(false);
   const addObject = useModelStore((state) => state.addObject);
   const objects = useModelStore((state) => state.objects);
   const showGrid = useViewportStore((state) => state.showGrid);
-
-  const { containerRef, canvasRef } = useResponsiveCanvas(
-    sidebarIsOpen,
-    SIDEBAR_WIDTH
-  );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -62,7 +52,6 @@ export const ViewerWrapper = ({
         "w-full h-full relative",
         isDragging ? "bg-accent" : "bg-background"
       )}
-      ref={containerRef}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -70,7 +59,6 @@ export const ViewerWrapper = ({
       {objects.length === 0 && <Dropzone isDragging={isDragging} />}
 
       <Canvas
-        ref={canvasRef}
         className="absolute top-0 left-0 w-full h-full"
         onCreated={({ gl }) => {
           gl.shadowMap.enabled = true;
