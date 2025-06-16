@@ -49,21 +49,11 @@ export const Toolbar = () => {
   return (
     <div className="absolute z-50 left-4 top-10 border px-1 py-1.5 rounded-lg bg-background shadow-md">
       <TooltipProvider openDelay={400}>
-        <ToggleGroup
-          defaultValue={[tools[0].label]}
-          toggleMultiple={false}
-          className="flex flex-col "
-        >
+        <div className="flex flex-col  ">
           {tools.map((tool) => (
-            <ToggleGroupItem
-              key={tool.label}
-              value={tool.label}
-              aria-label="Toggle bold "
-            >
-              <ToolTopItem {...tool} />
-            </ToggleGroupItem>
+            <ToolTopItem key={tool.label} {...tool} />
           ))}
-        </ToggleGroup>
+        </div>
       </TooltipProvider>
     </div>
   );
@@ -86,7 +76,7 @@ const ToolTopItem = ({
         <div
           className={cn(
             isActive && "text-chart-2",
-            "flex items-center justify-center w-full h-full  cursor-pointer "
+            "flex items-center justify-center w-full h-full  cursor-pointer border-b last:border-b-0 p-2"
           )}
           aria-label={label}
           title={label}

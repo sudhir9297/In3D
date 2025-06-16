@@ -5,12 +5,17 @@ import { ViewerWrapper } from "./_components/Viewport";
 import { Toolbar } from "./_components/Viewport/toolbar";
 
 import { useState } from "react";
+import LeftSideBar from "./_components/AppSideMenu/left-sidebar";
 
 export default function Page() {
   const [isCollapsibleMenuOpen, setIsCollapsibleMenuOpen] = useState(true);
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(true);
+  const toggleLeftPanel = () => setShowLeftPanel(!showLeftPanel);
+  const toggleRightPanel = () => setShowRightPanel(!showRightPanel);
 
   return (
-    <div className="flex flex-col md:flex-row h-screen  overflow-hidden">
+    <div className="relative flex flex-col md:flex-row h-screen  overflow-hidden">
       <div className="h-1/2 w-full md:h-full  flex-1 relative">
         <button
           className="hidden md:block md:absolute top-2 right-2 z-50  p-1 rounded"
@@ -22,6 +27,7 @@ export default function Page() {
         <ViewerWrapper sidebarIsOpen={isCollapsibleMenuOpen} />
       </div>
       <AppSidebar isOpen={isCollapsibleMenuOpen} />
+      {/* <LeftSideBar /> */}
     </div>
   );
 }
