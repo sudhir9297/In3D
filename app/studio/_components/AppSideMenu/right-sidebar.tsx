@@ -34,7 +34,7 @@ export const RightSideBar = ({
         // }}
       >
         <Tabs
-          defaultValue="scenegraph"
+          defaultValue="material"
           className="overflow-hidden  w-full h-1/2 md:h-full flex flex-col md:flex-row justify-between "
         >
           <IconSidebar />
