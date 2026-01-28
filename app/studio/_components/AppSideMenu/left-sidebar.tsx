@@ -42,7 +42,7 @@ export const LeftSideBar = ({
       />
       <Toolbar />
       <div
-        className="relative h-full overflow-hidden rounded-xl border bg-white text-xs"
+        className="relative h-full overflow-hidden rounded-xl border bg-card text-xs"
         style={{
           opacity: isVisible ? 1 : 0,
           visibility: isVisible ? "visible" : "hidden",

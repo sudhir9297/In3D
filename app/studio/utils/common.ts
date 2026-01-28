@@ -19,20 +19,20 @@ interface MaterialWithColor extends Material {
 }
 
 const isMaterialWithColor = (
-  material: Material
+  material: Material,
 ): material is MaterialWithColor => {
   return "color" in material && material.color instanceof Color;
 };
 
 const isMaterialWithEmissive = (
-  material: Material
+  material: Material,
 ): material is MaterialWithColor & { emissive: Color } => {
   return "emissive" in material && material.emissive instanceof Color;
 };
 
 export const highlightMesh = (
   mesh: Object3D,
-  options: HighlightOptions = {}
+  options: HighlightOptions = {},
 ): gsap.core.Timeline | null => {
   const {
     highlightColor = { r: 1.0, g: 0.2, b: 0.2 },
@@ -99,16 +99,16 @@ export const highlightMesh = (
           material.color.setRGB(
             originalColor.r,
             originalColor.g,
-            originalColor.b
+            originalColor.b,
           );
           if (originalEmissive && isMaterialWithEmissive(material)) {
             material.emissive.setRGB(
               originalEmissive.r,
               originalEmissive.g,
-              originalEmissive.b
+              originalEmissive.b,
             );
           }
-        }
+        },
       );
       onComplete?.();
     },
@@ -139,7 +139,7 @@ export const highlightMesh = (
             duration,
             ease,
           },
-          i * pulseDuration * 2 + pulseDuration
+          i * pulseDuration * 2 + pulseDuration,
         );
       }
     } else {
@@ -182,7 +182,7 @@ export const highlightMesh = (
                 duration,
                 ease,
               },
-              i * pulseDuration * 2 + pulseDuration
+              i * pulseDuration * 2 + pulseDuration,
             );
         }
       } else {
@@ -203,4 +203,380 @@ export const highlightMesh = (
   });
 
   return timeline;
+};
+
+// ====================
+// Material Extraction & Application
+// ====================
+
+import {
+  MeshStandardMaterial,
+  MeshPhysicalMaterial,
+  Texture,
+  RepeatWrapping,
+  ClampToEdgeWrapping,
+  MirroredRepeatWrapping,
+  FrontSide,
+  BackSide,
+  DoubleSide,
+  Wrapping,
+} from "three";
+import {
+  MaterialMaps,
+  MapProperties,
+  defaultMaps,
+  defaultMapProperties,
+  TextureMapInfo,
+} from "../store/materialStore";
+
+type StandardMaterial = MeshStandardMaterial | MeshPhysicalMaterial;
+
+const isStandardMaterial = (
+  material: Material,
+): material is StandardMaterial => {
+  return (
+    material instanceof MeshStandardMaterial ||
+    material instanceof MeshPhysicalMaterial
+  );
+};
+
+// Helper to convert Color to hex string
+const colorToHex = (color: Color): string => {
+  return `#${color.getHexString().toUpperCase()}`;
+};
+
+// Helper to get wrap mode string
+const getWrapModeString = (wrap: number): string => {
+  switch (wrap) {
+    case RepeatWrapping:
+      return "Repeat";
+    case ClampToEdgeWrapping:
+      return "ClampToEdge";
+    case MirroredRepeatWrapping:
+      return "MirroredRepeat";
+    default:
+      return "Repeat";
+  }
+};
+
+// Helper to map store map keys to Three.js material property names
+const getMaterialMapKey = (mapKey: keyof MaterialMaps): string => {
+  if (mapKey === "albedoMap") return "map";
+  return mapKey;
+};
+
+/**
+ * Update or clear a texture map on a mesh
+ */
+export const updateMeshTexture = (
+  object: Object3D,
+  mapKey: keyof MaterialMaps,
+  texture: Texture | null,
+): void => {
+  if (!(object instanceof Mesh)) return;
+
+  const materials = Array.isArray(object.material)
+    ? object.material
+    : [object.material];
+
+  const propName = getMaterialMapKey(mapKey);
+
+  materials.forEach((material) => {
+    if (!isStandardMaterial(material)) return;
+
+    (material as any)[propName] = texture;
+    material.needsUpdate = true;
+  });
+};
+
+// Helper to get wrap mode number
+const getWrapModeNumber = (wrap: string): Wrapping => {
+  switch (wrap) {
+    case "Repeat":
+      return RepeatWrapping;
+    case "ClampToEdge":
+      return ClampToEdgeWrapping;
+    case "MirroredRepeat":
+      return MirroredRepeatWrapping;
+    default:
+      return RepeatWrapping;
+  }
+};
+
+/**
+ * Converts a Three.js texture to a data URL for thumbnails
+ */
+export const textureToDataURL = (
+  texture: Texture,
+  size: number = 64,
+): string => {
+  const image = texture.image || (texture as any).source?.data;
+  if (!image) return "";
+
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    // Handle different image types
+    if (
+      image instanceof HTMLImageElement ||
+      image instanceof HTMLCanvasElement ||
+      image instanceof ImageBitmap
+    ) {
+      ctx.drawImage(image, 0, 0, size, size);
+    } else if (image.data && image.width && image.height) {
+      // Handle ImageData like structures (DataTexture)
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = image.width;
+      tempCanvas.height = image.height;
+      const tempCtx = tempCanvas.getContext("2d");
+      if (tempCtx) {
+        const imageData = new ImageData(
+          new Uint8ClampedArray(image.data.buffer || image.data),
+          image.width,
+          image.height,
+        );
+        tempCtx.putImageData(imageData, 0, 0);
+        ctx.drawImage(tempCanvas, 0, 0, size, size);
+      }
+    }
+
+    return canvas.toDataURL("image/png");
+  } catch (e) {
+    console.warn("Failed to generate texture thumbnail:", e);
+    return "";
+  }
+};
+
+// Helper to create texture map info
+const getTextureMapInfo = (texture: Texture | null): TextureMapInfo => {
+  if (!texture) {
+    return { thumbnail: "", map: "", use: false };
+  }
+
+  const image = texture.image || (texture as any).source?.data;
+
+  // If it's a direct HTMLImageElement with a src, use it directly (more efficient)
+  if (
+    image instanceof HTMLImageElement &&
+    image.src &&
+    image.src.startsWith("http")
+  ) {
+    return {
+      thumbnail: image.src,
+      map: image.src,
+      use: true,
+    };
+  }
+
+  // Otherwise generate a small thumbnail data URL
+  const thumbnail = textureToDataURL(texture);
+  const source =
+    texture.name || (image instanceof HTMLImageElement ? image.src : "texture");
+
+  return {
+    thumbnail:
+      thumbnail || (image instanceof HTMLImageElement ? image.src : ""),
+    map: source,
+    use: true,
+  };
+};
+
+/**
+ * Extract material properties from a mesh's material
+ */
+export const extractMaterialProperties = (
+  object: Object3D,
+): { maps: MaterialMaps; mapProperties: MapProperties } | null => {
+  if (!(object instanceof Mesh)) {
+    console.warn("extractMaterialProperties: Object is not a Mesh instance");
+    return null;
+  }
+
+  // Get the first material if it's an array
+  const material = Array.isArray(object.material)
+    ? object.material[0]
+    : object.material;
+
+  if (!material) {
+    console.warn("extractMaterialProperties: No material found");
+    return null;
+  }
+
+  // For non-standard materials, return defaults
+  if (!isStandardMaterial(material)) {
+    console.warn(
+      "extractMaterialProperties: Material is not a StandardMaterial, using defaults",
+    );
+    return {
+      maps: { ...defaultMaps },
+      mapProperties: { ...defaultMapProperties },
+    };
+  }
+
+  // Extract texture maps
+  const maps: MaterialMaps = {
+    albedoMap: getTextureMapInfo(material.map),
+    metalnessMap: getTextureMapInfo(material.metalnessMap),
+    roughnessMap: getTextureMapInfo(material.roughnessMap),
+    normalMap: getTextureMapInfo(material.normalMap),
+    displacementMap: getTextureMapInfo(material.displacementMap),
+    aoMap: getTextureMapInfo(material.aoMap),
+    emissiveMap: getTextureMapInfo(material.emissiveMap),
+    bumpMap: getTextureMapInfo(material.bumpMap),
+    alphaMap: getTextureMapInfo(material.alphaMap),
+    lightMap: getTextureMapInfo(material.lightMap),
+  };
+
+  // Get repeat values from first available texture
+  const firstTexture =
+    material.map ||
+    material.normalMap ||
+    material.roughnessMap ||
+    material.metalnessMap;
+  const repeatX = firstTexture?.repeat?.x ?? 1;
+  const repeatY = firstTexture?.repeat?.y ?? 1;
+  const rotation = firstTexture?.rotation ?? 0;
+  const wrapS = firstTexture ? getWrapModeString(firstTexture.wrapS) : "Repeat";
+  const wrapT = firstTexture ? getWrapModeString(firstTexture.wrapT) : "Repeat";
+  const flipY = firstTexture?.flipY ?? true;
+
+  // Extract scalar properties
+  const mapProperties: MapProperties = {
+    color: colorToHex(material.color),
+    roughness: material.roughness,
+    metalness: material.metalness,
+    repeatX,
+    repeatY,
+    normalScaleX: material.normalScale?.x ?? 1,
+    normalScaleY: material.normalScale?.y ?? 1,
+    wrapS,
+    wrapT,
+    emissiveIntensity: material.emissiveIntensity,
+    displacementScale: material.displacementScale,
+    transparent: material.transparent,
+    flipY,
+    bumpScale: material.bumpScale,
+    emissiveColor: colorToHex(material.emissive),
+    aoMapIntensity: material.aoMapIntensity,
+    side: material.side === FrontSide ? 0 : material.side === BackSide ? 1 : 2,
+    rotation,
+    opacity: material.opacity,
+    lightMapIntensity: material.lightMapIntensity,
+  };
+
+  return { maps, mapProperties };
+};
+
+/**
+ * Apply material properties to a mesh's material
+ */
+export const applyMaterialProperties = (
+  object: Object3D,
+  props: Partial<MapProperties>,
+): void => {
+  if (!(object instanceof Mesh)) {
+    console.warn("applyMaterialProperties: Object is not a Mesh instance");
+    return;
+  }
+
+  const materials = Array.isArray(object.material)
+    ? object.material
+    : [object.material];
+
+  materials.forEach((material) => {
+    if (!isStandardMaterial(material)) return;
+
+    // Apply scalar properties
+    if (props.color !== undefined) {
+      material.color.set(props.color);
+    }
+    if (props.roughness !== undefined) {
+      material.roughness = props.roughness;
+    }
+    if (props.metalness !== undefined) {
+      material.metalness = props.metalness;
+    }
+    if (props.emissiveIntensity !== undefined) {
+      material.emissiveIntensity = props.emissiveIntensity;
+    }
+    if (props.emissiveColor !== undefined) {
+      material.emissive.set(props.emissiveColor);
+    }
+    if (props.displacementScale !== undefined) {
+      material.displacementScale = props.displacementScale;
+    }
+    if (props.bumpScale !== undefined) {
+      material.bumpScale = props.bumpScale;
+    }
+    if (props.aoMapIntensity !== undefined) {
+      material.aoMapIntensity = props.aoMapIntensity;
+    }
+    if (props.lightMapIntensity !== undefined) {
+      material.lightMapIntensity = props.lightMapIntensity;
+    }
+    if (props.transparent !== undefined) {
+      material.transparent = props.transparent;
+    }
+    if (props.opacity !== undefined) {
+      material.opacity = props.opacity;
+    }
+    if (props.side !== undefined) {
+      material.side =
+        props.side === 0 ? FrontSide : props.side === 1 ? BackSide : DoubleSide;
+    }
+    if (props.normalScaleX !== undefined || props.normalScaleY !== undefined) {
+      material.normalScale.set(
+        props.normalScaleX ?? material.normalScale.x,
+        props.normalScaleY ?? material.normalScale.y,
+      );
+    }
+
+    // Apply texture properties to all textures
+    const textures = [
+      material.map,
+      material.normalMap,
+      material.roughnessMap,
+      material.metalnessMap,
+      material.displacementMap,
+      material.aoMap,
+      material.emissiveMap,
+      material.bumpMap,
+      material.alphaMap,
+      material.lightMap,
+    ].filter((t): t is Texture => t !== null);
+
+    textures.forEach((texture) => {
+      // Skip transformations for AO maps as they often use separate UVs or should remain static
+      const isAO = texture === material.aoMap;
+
+      if (!isAO) {
+        if (props.repeatX !== undefined || props.repeatY !== undefined) {
+          texture.repeat.set(
+            props.repeatX ?? texture.repeat.x,
+            props.repeatY ?? texture.repeat.y,
+          );
+        }
+        if (props.wrapS !== undefined) {
+          texture.wrapS = getWrapModeNumber(props.wrapS);
+        }
+        if (props.wrapT !== undefined) {
+          texture.wrapT = getWrapModeNumber(props.wrapT);
+        }
+        if (props.rotation !== undefined) {
+          texture.rotation = props.rotation;
+        }
+      }
+
+      if (props.flipY !== undefined) {
+        texture.flipY = props.flipY;
+      }
+      texture.needsUpdate = true;
+    });
+
+    material.needsUpdate = true;
+  });
 };

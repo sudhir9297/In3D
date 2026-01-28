@@ -27,7 +27,7 @@ export const RightSideBar = ({
         onClick={onPanelToggle}
       />
       <div
-        className="relative h-full bg-white overflow-hidden rounded-xl border  text-xs transition-all duration-300 "
+        className="relative h-full bg-card overflow-hidden rounded-xl border  text-xs transition-all duration-300 "
         // style={{
         //   opacity: isVisible ? 1 : 0,
         //   visibility: isVisible ? "visible" : "hidden",
