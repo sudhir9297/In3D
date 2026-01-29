@@ -1,7 +1,7 @@
 "use client";
 import * as THREE from "three";
-import React, { useCallback, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import React, { useCallback, useState, useEffect } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import {
   Center,
   Environment,
@@ -17,12 +17,72 @@ import { useViewportStore } from "../../store/viewportStore";
 
 import Dropzone from "./dropzone";
 import SceneGrid from "./scene-grid";
+import {
+  useEnvironmentStore,
+  ToneMappingMode,
+} from "../../store/environmentStore";
+
+const TONE_MAPPING_MAP: Record<ToneMappingMode, number> = {
+  None: THREE.NoToneMapping,
+  Linear: THREE.LinearToneMapping,
+  Reinhard: THREE.ReinhardToneMapping,
+  Cineon: THREE.CineonToneMapping,
+  ACESFilmic: THREE.ACESFilmicToneMapping,
+  AgX: (THREE as any).AgXToneMapping || THREE.ACESFilmicToneMapping,
+  Neutral: (THREE as any).NeutralToneMapping || THREE.ACESFilmicToneMapping,
+};
+
+const GlUpdater = ({
+  toneMapping,
+  exposure,
+  rotation,
+}: {
+  toneMapping: number;
+  exposure: number;
+  rotation: number;
+}) => {
+  const { gl, scene } = useThree();
+
+  useEffect(() => {
+    gl.toneMapping = toneMapping as any;
+    gl.toneMappingExposure = exposure;
+  }, [gl, toneMapping, exposure]);
+
+  useEffect(() => {
+    const rad = THREE.MathUtils.degToRad(rotation);
+    if (scene.backgroundRotation) {
+      scene.backgroundRotation.set(0, rad, 0);
+    }
+    if (scene.environmentRotation) {
+      scene.environmentRotation.set(0, rad, 0);
+    }
+  }, [scene, rotation]);
+
+  return null;
+};
 
 export const ViewerWrapper = () => {
   const [isDragging, setIsDragging] = useState(false);
   const addObject = useModelStore((state) => state.addObject);
   const objects = useModelStore((state) => state.objects);
   const showGrid = useViewportStore((state) => state.showGrid);
+
+  const {
+    backgroundColor,
+    showHDR,
+    hdrPath,
+    hdrBlur,
+    hdrRotation,
+    hdrIntensity,
+    fogEnabled,
+    fogColor,
+    fogDensity,
+    ambientIntensity,
+    ambientColor,
+    backgroundImage,
+    exposure,
+    toneMapping,
+  } = useEnvironmentStore();
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -43,14 +103,14 @@ export const ViewerWrapper = () => {
         if (object) addObject(object);
       });
     },
-    [addObject]
+    [addObject],
   );
 
   return (
     <div
       className={cn(
         "w-full h-full relative",
-        isDragging ? "bg-accent" : "bg-background"
+        isDragging ? "bg-accent" : "bg-background",
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -63,14 +123,19 @@ export const ViewerWrapper = () => {
         onCreated={({ gl }) => {
           gl.shadowMap.enabled = true;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
-          gl.toneMapping = THREE.ACESFilmicToneMapping;
-          gl.toneMappingExposure = 1.0;
           gl.outputColorSpace = THREE.SRGBColorSpace;
         }}
         shadows
-        gl={{ alpha: true }}
+        gl={{
+          alpha: true,
+        }}
         camera={{ fov: 50, near: 0.1, far: 1000 }}
       >
+        <GlUpdater
+          toneMapping={TONE_MAPPING_MAP[toneMapping]}
+          exposure={exposure}
+          rotation={hdrRotation}
+        />
         <Center>
           <Scene />
         </Center>
@@ -84,8 +149,26 @@ export const ViewerWrapper = () => {
           dampingFactor={0.05}
         />
 
-        <color attach="background" args={["#f2f2f2"]} />
-        <Environment preset="apartment" />
+        <ambientLight intensity={ambientIntensity} color={ambientColor} />
+
+        {fogEnabled && <fogExp2 attach="fog" args={[fogColor, fogDensity]} />}
+
+        {backgroundImage ? (
+          <BackgroundImageLoader url={backgroundImage} />
+        ) : (
+          <color attach="background" args={[backgroundColor]} />
+        )}
+
+        {hdrPath && (
+          <Environment
+            {...({
+              preset: hdrPath as any,
+              background: showHDR && !backgroundImage,
+              blur: hdrBlur,
+              environmentIntensity: hdrIntensity,
+            } as any)}
+          />
+        )}
         {showGrid && <SceneGrid />}
 
         <GizmoHelper alignment="bottom-right" margin={[60, 60]}>
@@ -97,4 +180,22 @@ export const ViewerWrapper = () => {
       </Canvas>
     </div>
   );
+};
+
+const BackgroundImageLoader = ({ url }: { url: string }) => {
+  const { scene } = useThree();
+
+  useEffect(() => {
+    const loader = new THREE.TextureLoader();
+    loader.load(url, (texture) => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      scene.background = texture;
+    });
+
+    return () => {
+      scene.background = null;
+    };
+  }, [url, scene]);
+
+  return null;
 };

@@ -1,6 +1,7 @@
 import { TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import React from "react";
+import { EnvironmentSettings } from "./environment-settings";
 import MaterialSettings from "./material-settings";
 
 export const CollapsedSideBar = () => {
@@ -19,9 +20,14 @@ export const CollapsedSideBar = () => {
         </h3>
         <MaterialSettings />
       </TabsContent>
-      <TabsContent value="environment">
-        <h3 className="font-medium text-sm px-3 mb-2">Environment Settings</h3>
-        <p>Design settings and options will appear here.</p>
+      <TabsContent
+        value="environment"
+        className="h-full m-0 flex flex-col overflow-hidden"
+      >
+        <h3 className="font-medium text-sm px-3 mb-2 shrink-0">
+          Environment Settings
+        </h3>
+        <EnvironmentSettings />
       </TabsContent>
       <TabsContent value="postprocessing">
         <h3 className="font-medium text-sm px-3 mb-2">

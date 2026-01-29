@@ -297,7 +297,7 @@ function MapRow({
   isActive: boolean;
 }) {
   const [error, setError] = React.useState(false);
-  const { setMaps, selectedMesh } = useMaterialStore();
+  const { setMaps, setMapProperties, selectedMesh } = useMaterialStore();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Only attempt to show images that look like valid sources (Data URL, Blob URL, or HTTP)
@@ -322,8 +322,9 @@ function MapRow({
         // Apply existing properties to the new texture
         const props = useMaterialStore.getState().mapProperties;
 
+        // Reset repeat to 8 as per user request whenever a new texture is applied
+        texture.repeat.set(8, 8);
         texture.flipY = props.flipY;
-        texture.repeat.set(props.repeatX, props.repeatY);
         texture.rotation = props.rotation;
         // Map wrap modes
         const wrapS =
@@ -345,6 +346,10 @@ function MapRow({
 
         const dataUrl = textureToDataURL(texture);
         setMaps({ [mapKey]: { thumbnail: dataUrl, map: url, use: true } });
+
+        // Also update the store properties to 8 so the UI reflects this reset
+        setMapProperties({ repeatX: 8, repeatY: 8 });
+
         setError(false);
       });
     }
@@ -448,7 +453,18 @@ function PropertyRow({
           <label className="text-xs text-muted-foreground">
             {config.label}
           </label>
-          <span className="text-xs font-mono">{Number(value).toFixed(2)}</span>
+          <input
+            type="number"
+            value={value as number}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              if (!isNaN(v)) onChange(v);
+            }}
+            step={config.step}
+            min={config.min}
+            max={config.max}
+            className="w-16 h-5 text-[10px] text-right bg-muted/50 border-none outline-none focus:ring-1 focus:ring-chart-2 rounded px-1 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
         </div>
         <input
           type="range"
