@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui-components/react/toggle-group";
-import { Toggle as TogglePrimitive } from "@base-ui-components/react/toggle";
+import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group";
+import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
 import {
   type HTMLMotionProps,
   type Transition,
@@ -35,7 +35,7 @@ const toggleVariants = cva(
       variant: "default",
       size: "default",
     },
-  }
+  },
 );
 
 type ToggleGroupContextProps = VariantProps<typeof toggleVariants> & {
@@ -61,6 +61,9 @@ type ToggleGroupProps = React.ComponentProps<typeof ToggleGroupPrimitive> &
   Omit<VariantProps<typeof toggleVariants>, "type"> & {
     transition?: Transition;
     activeClassName?: string;
+    toggleMultiple?: boolean;
+    children?: React.ReactNode;
+    className?: string;
   };
 
 function ToggleGroup({
@@ -70,6 +73,7 @@ function ToggleGroup({
   children,
   transition = { type: "spring", bounce: 0, stiffness: 200, damping: 25 },
   activeClassName,
+  toggleMultiple,
   ...props
 }: ToggleGroupProps) {
   const globalId = React.useId();
@@ -79,7 +83,7 @@ function ToggleGroup({
       value={{
         variant,
         size,
-        type: props.toggleMultiple ? "multiple" : "single",
+        type: toggleMultiple ? "multiple" : "single",
         transition,
         activeClassName,
         globalId,
@@ -89,7 +93,7 @@ function ToggleGroup({
         data-slot="toggle-group"
         className={cn(
           "flex items-center justify-center gap-1 relative",
-          className
+          className,
         )}
         {...props}
       >
@@ -107,6 +111,8 @@ type ToggleGroupItemProps = Omit<
     children?: React.ReactNode;
     buttonProps?: HTMLMotionProps<"button">;
     spanProps?: React.ComponentProps<"span">;
+    className?: string;
+    ref?: React.Ref<HTMLButtonElement>;
   };
 
 function ToggleGroupItem({
@@ -158,7 +164,7 @@ function ToggleGroupItem({
           className={cn("relative  w-full", buttonProps?.className)}
         >
           <span
-            {...spanProps}
+            {...(spanProps as any)}
             {...(isActive ? { "data-pressed": "" } : {})}
             className={cn(
               "relative z-[1]",
@@ -168,7 +174,7 @@ function ToggleGroupItem({
                 type,
               }),
               className,
-              spanProps?.className
+              spanProps?.className,
             )}
           >
             {children}
@@ -185,7 +191,7 @@ function ToggleGroupItem({
                 transition={transition}
                 className={cn(
                   "absolute inset-0 z-0 rounded-md bg-muted ",
-                  activeClassName
+                  activeClassName,
                 )}
               />
             )}

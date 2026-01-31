@@ -18,7 +18,6 @@ import { useViewportStore } from "../../store/viewportStore";
 import Dropzone from "./dropzone";
 import SceneGrid from "./scene-grid";
 import Postprocessing from "./postprocessing";
-import { Perf } from "r3f-perf";
 import {
   useEnvironmentStore,
   ToneMappingMode,
@@ -181,7 +180,6 @@ export const ViewerWrapper = () => {
         </GizmoHelper>
 
         <Postprocessing />
-        <Perf position="bottom-left" />
       </Canvas>
     </div>
   );
@@ -194,7 +192,7 @@ const BackgroundImageLoader = ({ url }: { url: string }) => {
     const loader = new THREE.TextureLoader();
     loader.load(url, (texture) => {
       texture.colorSpace = THREE.SRGBColorSpace;
-      scene.background = texture;
+      scene.background = texture as any;
     });
 
     return () => {
