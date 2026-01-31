@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import React from "react";
 import { EnvironmentSettings } from "./environment-settings";
 import MaterialSettings from "./material-settings";
+import { PostprocessingSettings } from "./postprocessing-settings";
 
 export const CollapsedSideBar = () => {
   return (
@@ -29,11 +30,14 @@ export const CollapsedSideBar = () => {
         </h3>
         <EnvironmentSettings />
       </TabsContent>
-      <TabsContent value="postprocessing">
-        <h3 className="font-medium text-sm px-3 mb-2">
+      <TabsContent
+        value="postprocessing"
+        className="h-full m-0 flex flex-col overflow-hidden"
+      >
+        <h3 className="font-medium text-sm px-3 mb-2 shrink-0">
           Postprocessing Settings
         </h3>
-        <p>Design settings and options will appear here.</p>
+        <PostprocessingSettings />
       </TabsContent>
     </div>
   );

@@ -6,6 +6,11 @@ export interface TextureMapInfo {
   thumbnail: string;
   map: string;
   use: boolean;
+  repeatX: number;
+  repeatY: number;
+  rotation: number;
+  wrapS: string;
+  wrapT: string;
 }
 
 export interface MaterialMaps {
@@ -55,6 +60,10 @@ export interface MaterialStore {
   // Actions
   setSelectedMesh: (mesh: Object3D | null) => void;
   setMaps: (maps: Partial<MaterialMaps>) => void;
+  setLocalMapProperties: (
+    mapKey: keyof MaterialMaps,
+    props: Partial<TextureMapInfo>,
+  ) => void;
   setMapProperties: (props: Partial<MapProperties>) => void;
   setMaterial: (maps: MaterialMaps, props: MapProperties) => void;
   clearMaterial: () => void;
@@ -65,6 +74,11 @@ const defaultMapInfo: TextureMapInfo = {
   thumbnail: "",
   map: "",
   use: true,
+  repeatX: 8,
+  repeatY: 8,
+  rotation: 0,
+  wrapS: "Repeat",
+  wrapT: "Repeat",
 };
 
 const defaultMaps: MaterialMaps = {
@@ -73,7 +87,7 @@ const defaultMaps: MaterialMaps = {
   roughnessMap: { ...defaultMapInfo },
   normalMap: { ...defaultMapInfo },
   displacementMap: { ...defaultMapInfo },
-  aoMap: { ...defaultMapInfo },
+  aoMap: { ...defaultMapInfo, repeatX: 1, repeatY: 1 }, // AO usually 1:1
   emissiveMap: { ...defaultMapInfo },
   bumpMap: { ...defaultMapInfo },
   alphaMap: { ...defaultMapInfo },
@@ -115,10 +129,47 @@ export const useMaterialStore = create<MaterialStore>((set) => ({
       maps: { ...state.maps, ...maps },
     })),
 
-  setMapProperties: (props) =>
+  setLocalMapProperties: (mapKey, props) =>
     set((state) => ({
-      mapProperties: { ...state.mapProperties, ...props },
+      maps: {
+        ...state.maps,
+        [mapKey]: { ...state.maps[mapKey], ...props },
+      },
     })),
+
+  setMapProperties: (props) =>
+    set((state) => {
+      const newMapProperties = { ...state.mapProperties, ...props };
+
+      // If global texture properties changed, update all maps EXCEPT aoMap
+      const texturePropsToSync: (keyof TextureMapInfo)[] = [
+        "repeatX",
+        "repeatY",
+        "rotation",
+        "wrapS",
+        "wrapT",
+      ];
+
+      const changedProps = Object.keys(props).filter((k) =>
+        texturePropsToSync.includes(k as any),
+      );
+
+      if (changedProps.length > 0) {
+        const newMaps = { ...state.maps };
+        Object.keys(newMaps).forEach((key) => {
+          if (key === "aoMap") return; // Skip AO map
+
+          const mapKey = key as keyof MaterialMaps;
+          newMaps[mapKey] = {
+            ...newMaps[mapKey],
+            ...props,
+          };
+        });
+        return { mapProperties: newMapProperties, maps: newMaps };
+      }
+
+      return { mapProperties: newMapProperties };
+    }),
 
   setMaterial: (maps, props) =>
     set({

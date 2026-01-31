@@ -45,30 +45,53 @@ const mapDisplayNames: Record<keyof MaterialMaps, string> = {
 
 // Property categories for organization
 const propertyCategories = {
+  other: {
+    label: "Other",
+    properties: ["side"],
+  },
   globalProperties: {
     label: "Global Properties",
     properties: ["repeatX", "repeatY", "rotation", "wrapS", "wrapT", "flipY"],
   },
-  materialProperties: {
-    label: "Material Properties",
-    properties: [
-      "color",
-      "roughness",
-      "metalness",
-      "normalScaleX",
-      "normalScaleY",
-      "bumpScale",
-      "displacementScale",
-      "emissiveColor",
-      "emissiveIntensity",
-      "aoMapIntensity",
-      "lightMapIntensity",
-      "opacity",
-      "transparent",
-      "side",
-    ],
-  },
 };
+
+// Map Section Config
+const mapSections: {
+  key: keyof MaterialMaps;
+  label: string;
+  properties: (keyof MapProperties)[];
+}[] = [
+  { key: "albedoMap", label: "Albedo / Base Map", properties: ["color"] },
+  { key: "roughnessMap", label: "Roughness Map", properties: ["roughness"] },
+  { key: "metalnessMap", label: "Metalness Map", properties: ["metalness"] },
+  {
+    key: "normalMap",
+    label: "Normal Map",
+    properties: ["normalScaleX", "normalScaleY"],
+  },
+  { key: "aoMap", label: "Ambient Occlusion", properties: ["aoMapIntensity"] },
+  {
+    key: "emissiveMap",
+    label: "Emissive Map",
+    properties: ["emissiveColor", "emissiveIntensity"],
+  },
+  {
+    key: "displacementMap",
+    label: "Displacement Map",
+    properties: ["displacementScale"],
+  },
+  { key: "bumpMap", label: "Bump Map", properties: ["bumpScale"] },
+  {
+    key: "alphaMap",
+    label: "Alpha Map",
+    properties: ["opacity", "transparent"],
+  },
+  {
+    key: "lightMap",
+    label: "Light Map",
+    properties: ["lightMapIntensity"],
+  },
+];
 
 // Property configurations
 const propertyConfig: Record<
@@ -177,8 +200,13 @@ const propertyConfig: Record<
 };
 
 export const MaterialSettings = () => {
-  const { maps, mapProperties, selectedMesh, setMapProperties } =
-    useMaterialStore();
+  const {
+    maps,
+    mapProperties,
+    selectedMesh,
+    setMapProperties,
+    setLocalMapProperties,
+  } = useMaterialStore();
   const selectedObject = useModelStore((state) => state.selectedObject);
 
   // Handle property change
@@ -194,6 +222,20 @@ export const MaterialSettings = () => {
     }
   };
 
+  // Handle local map property change
+  const handleLocalPropertyChange = (
+    mapKey: keyof MaterialMaps,
+    key: string,
+    value: any,
+  ) => {
+    setLocalMapProperties(mapKey, { [key]: value });
+
+    // Apply to mesh in real-time targetting only this map
+    if (selectedMesh) {
+      applyMaterialProperties(selectedMesh, { [key]: value }, mapKey);
+    }
+  };
+
   if (!selectedObject) {
     return (
       <div className="p-4 text-center text-muted-foreground">
@@ -202,79 +244,187 @@ export const MaterialSettings = () => {
     );
   }
 
+  const localTransformProps = [
+    "repeatX",
+    "repeatY",
+    "rotation",
+    "wrapS",
+    "wrapT",
+  ];
+
   return (
     <div className="space-y-3 p-2 overflow-y-auto flex-1 h-full min-h-0">
-      {/* Maps Section */}
+      {/* Global Properties Section (Top) */}
       <Collapsible defaultOpen>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
-            <Image className="w-4 h-4" />
-            <span className="font-medium text-sm">Texture Maps</span>
+            <Globe className="w-4 h-4" />
+            <span className="font-medium text-sm">
+              {propertyCategories.globalProperties.label}
+            </span>
           </div>
-          <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+          <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="grid grid-cols-2 gap-2 mt-2 px-1">
-            {(Object.keys(maps) as Array<keyof MaterialMaps>).map((mapKey) => {
-              const mapInfo = maps[mapKey];
+          <div className="space-y-2 mt-2 px-2">
+            {propertyCategories.globalProperties.properties.map((propKey) => {
+              const config = propertyConfig[propKey];
+              if (!config) return null;
+              const value = mapProperties[propKey as keyof MapProperties];
               return (
-                <MapRow
-                  key={mapKey}
-                  mapKey={mapKey}
-                  label={mapDisplayNames[mapKey]}
-                  thumbnail={mapInfo.thumbnail}
-                  map={mapInfo.map}
-                  isActive={mapInfo.use}
+                <PropertyRow
+                  key={propKey}
+                  propKey={propKey}
+                  config={config}
+                  value={value}
+                  onChange={(v) =>
+                    handlePropertyChange(propKey as keyof MapProperties, v)
+                  }
+                />
+              );
+            })}
+            <p className="text-[10px] text-muted-foreground italic mt-2 px-1 border-t pt-2">
+              Note: Global transforms do not affect the AO map.
+            </p>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Map Sections */}
+      {mapSections.map((section) => {
+        const mapInfo = maps[section.key];
+        return (
+          <Collapsible key={section.key}>
+            <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md group">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <div
+                  className={cn(
+                    "w-5 h-5 rounded border bg-muted shrink-0 flex items-center justify-center overflow-hidden",
+                    mapInfo.use && "border-chart-2",
+                  )}
+                >
+                  {mapInfo.thumbnail ? (
+                    <img
+                      src={mapInfo.thumbnail}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Image className="w-3 h-3 opacity-30" />
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    "font-medium text-sm truncate",
+                    mapInfo.use && "text-chart-2 font-semibold",
+                  )}
+                >
+                  {section.label}
+                </span>
+              </div>
+              <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="space-y-3 mt-2 px-2 pb-2">
+                <div className="w-32 aspect-square">
+                  <MapRow
+                    mapKey={section.key}
+                    label={""} // Label is now in collapse header
+                    thumbnail={mapInfo.thumbnail}
+                    map={mapInfo.map}
+                    isActive={mapInfo.use}
+                    hideLabel
+                  />
+                </div>
+
+                {/* Main section properties (Color, Roughness, etc) */}
+                {section.properties.length > 0 && (
+                  <div className="space-y-3 mt-1 pl-1">
+                    {section.properties.map((propKey) => {
+                      const config = propertyConfig[propKey];
+                      if (!config) return null;
+                      const value =
+                        mapProperties[propKey as keyof MapProperties];
+                      return (
+                        <PropertyRow
+                          key={propKey as string}
+                          propKey={propKey as string}
+                          config={config}
+                          value={value}
+                          onChange={(v) =>
+                            handlePropertyChange(
+                              propKey as keyof MapProperties,
+                              v,
+                            )
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Local Transformation Properties (Repeat, Rotation, Wrap) */}
+                {mapInfo.use && (
+                  <div className="pt-3 border-t border-muted/50 mt-2 space-y-3 pl-1">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">
+                      Local Transforms
+                    </p>
+                    {localTransformProps.map((propKey) => {
+                      const config = propertyConfig[propKey];
+                      if (!config) return null;
+                      // Get from local map data
+                      const value = (mapInfo as any)[propKey];
+                      return (
+                        <PropertyRow
+                          key={`${section.key}-${propKey}`}
+                          propKey={propKey}
+                          config={config}
+                          value={value}
+                          onChange={(v) =>
+                            handleLocalPropertyChange(section.key, propKey, v)
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        );
+      })}
+
+      {/* Other Section (Bottom) */}
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
+          <div className="flex items-center gap-2">
+            <Palette className="w-4 h-4" />
+            <span className="font-medium text-sm">
+              {propertyCategories.other.label}
+            </span>
+          </div>
+          <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-2 mt-2 px-2">
+            {propertyCategories.other.properties.map((propKey) => {
+              const config = propertyConfig[propKey];
+              if (!config) return null;
+              const value = mapProperties[propKey as keyof MapProperties];
+              return (
+                <PropertyRow
+                  key={propKey}
+                  propKey={propKey}
+                  config={config}
+                  value={value}
+                  onChange={(v) =>
+                    handlePropertyChange(propKey as keyof MapProperties, v)
+                  }
                 />
               );
             })}
           </div>
         </CollapsibleContent>
       </Collapsible>
-
-      {/* Properties Section */}
-      {Object.entries(propertyCategories).map(([categoryKey, category]) => (
-        <Collapsible
-          key={categoryKey}
-          defaultOpen={
-            categoryKey === "materialProperties" ||
-            categoryKey === "globalProperties"
-          }
-        >
-          <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
-            <div className="flex items-center gap-2">
-              {categoryKey === "globalProperties" ? (
-                <Globe className="w-4 h-4" />
-              ) : (
-                <Palette className="w-4 h-4" />
-              )}
-              <span className="font-medium text-sm">{category.label}</span>
-            </div>
-            <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="space-y-2 mt-2 px-2">
-              {category.properties.map((propKey) => {
-                const config = propertyConfig[propKey];
-                if (!config) return null;
-                const value = mapProperties[propKey as keyof MapProperties];
-
-                return (
-                  <PropertyRow
-                    key={propKey}
-                    propKey={propKey}
-                    config={config}
-                    value={value}
-                    onChange={(v) =>
-                      handlePropertyChange(propKey as keyof MapProperties, v)
-                    }
-                  />
-                );
-              })}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      ))}
 
       {/* Spacer for better scrolling */}
       <div className="h-10 shrink-0" />
@@ -289,12 +439,14 @@ function MapRow({
   thumbnail,
   map,
   isActive,
+  hideLabel,
 }: {
   mapKey: keyof MaterialMaps;
   label: string;
   thumbnail: string;
   map: string;
   isActive: boolean;
+  hideLabel?: boolean;
 }) {
   const [error, setError] = React.useState(false);
   const { setMaps, setMapProperties, selectedMesh } = useMaterialStore();
@@ -323,7 +475,8 @@ function MapRow({
         const props = useMaterialStore.getState().mapProperties;
 
         // Reset repeat to 8 as per user request whenever a new texture is applied
-        texture.repeat.set(8, 8);
+        const repeatVal = mapKey === "aoMap" ? 1 : 8;
+        texture.repeat.set(repeatVal, repeatVal);
         texture.flipY = props.flipY;
         texture.rotation = props.rotation;
         // Map wrap modes
@@ -345,10 +498,18 @@ function MapRow({
         updateMeshTexture(selectedMesh, mapKey, texture);
 
         const dataUrl = textureToDataURL(texture);
-        setMaps({ [mapKey]: { thumbnail: dataUrl, map: url, use: true } });
-
-        // Also update the store properties to 8 so the UI reflects this reset
-        setMapProperties({ repeatX: 8, repeatY: 8 });
+        setMaps({
+          [mapKey]: {
+            thumbnail: dataUrl,
+            map: url,
+            use: true,
+            repeatX: repeatVal,
+            repeatY: repeatVal,
+            rotation: props.rotation,
+            wrapS: props.wrapS,
+            wrapT: props.wrapT,
+          },
+        });
 
         setError(false);
       });
@@ -359,7 +520,18 @@ function MapRow({
     e.stopPropagation();
     if (selectedMesh) {
       updateMeshTexture(selectedMesh, mapKey, null);
-      setMaps({ [mapKey]: { thumbnail: "", map: "", use: false } });
+      setMaps({
+        [mapKey]: {
+          thumbnail: "",
+          map: "",
+          use: false,
+          repeatX: mapKey === "aoMap" ? 1 : 8,
+          repeatY: mapKey === "aoMap" ? 1 : 8,
+          rotation: 0,
+          wrapS: "Repeat",
+          wrapT: "Repeat",
+        },
+      });
       setError(false);
     }
   };
@@ -422,14 +594,16 @@ function MapRow({
         </button>
       )}
 
-      <span
-        className={cn(
-          "text-[10px] text-center leading-tight font-medium line-clamp-2",
-          isActive ? "text-chart-2" : "text-muted-foreground",
-        )}
-      >
-        {label.replace(" (Diffuse)", "")}
-      </span>
+      {!hideLabel && (
+        <span
+          className={cn(
+            "text-[10px] text-center leading-tight font-medium line-clamp-2",
+            isActive ? "text-chart-2" : "text-muted-foreground",
+          )}
+        >
+          {label.replace(" (Diffuse)", "")}
+        </span>
+      )}
     </div>
   );
 }

@@ -45,7 +45,7 @@ export interface EnvironmentState {
 
 const initialState = {
   backgroundColor: "#f2f2f2",
-  showHDR: true,
+  showHDR: false,
   hdrPath: "apartment",
   hdrBlur: 0.1,
   hdrRotation: 0,

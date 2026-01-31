@@ -353,8 +353,16 @@ export const textureToDataURL = (
 
 // Helper to create texture map info
 const getTextureMapInfo = (texture: Texture | null): TextureMapInfo => {
+  const defaults = {
+    repeatX: 8,
+    repeatY: 8,
+    rotation: 0,
+    wrapS: "Repeat",
+    wrapT: "Repeat",
+  };
+
   if (!texture) {
-    return { thumbnail: "", map: "", use: false };
+    return { thumbnail: "", map: "", use: false, ...defaults };
   }
 
   const image = texture.image || (texture as any).source?.data;
@@ -369,6 +377,7 @@ const getTextureMapInfo = (texture: Texture | null): TextureMapInfo => {
       thumbnail: image.src,
       map: image.src,
       use: true,
+      ...defaults,
     };
   }
 
@@ -382,6 +391,7 @@ const getTextureMapInfo = (texture: Texture | null): TextureMapInfo => {
       thumbnail || (image instanceof HTMLImageElement ? image.src : ""),
     map: source,
     use: true,
+    ...defaults,
   };
 };
 
@@ -418,17 +428,32 @@ export const extractMaterialProperties = (
   }
 
   // Extract texture maps
+  const getMapInfoWithTransforms = (
+    texture: Texture | null,
+    isAO: boolean,
+  ): TextureMapInfo => {
+    const info = getTextureMapInfo(texture);
+    return {
+      ...info,
+      repeatX: texture?.repeat?.x ?? (isAO ? 1 : 8),
+      repeatY: texture?.repeat?.y ?? (isAO ? 1 : 8),
+      rotation: texture?.rotation ?? 0,
+      wrapS: texture ? getWrapModeString(texture.wrapS) : "Repeat",
+      wrapT: texture ? getWrapModeString(texture.wrapT) : "Repeat",
+    };
+  };
+
   const maps: MaterialMaps = {
-    albedoMap: getTextureMapInfo(material.map),
-    metalnessMap: getTextureMapInfo(material.metalnessMap),
-    roughnessMap: getTextureMapInfo(material.roughnessMap),
-    normalMap: getTextureMapInfo(material.normalMap),
-    displacementMap: getTextureMapInfo(material.displacementMap),
-    aoMap: getTextureMapInfo(material.aoMap),
-    emissiveMap: getTextureMapInfo(material.emissiveMap),
-    bumpMap: getTextureMapInfo(material.bumpMap),
-    alphaMap: getTextureMapInfo(material.alphaMap),
-    lightMap: getTextureMapInfo(material.lightMap),
+    albedoMap: getMapInfoWithTransforms(material.map, false),
+    metalnessMap: getMapInfoWithTransforms(material.metalnessMap, false),
+    roughnessMap: getMapInfoWithTransforms(material.roughnessMap, false),
+    normalMap: getMapInfoWithTransforms(material.normalMap, false),
+    displacementMap: getMapInfoWithTransforms(material.displacementMap, false),
+    aoMap: getMapInfoWithTransforms(material.aoMap, true),
+    emissiveMap: getMapInfoWithTransforms(material.emissiveMap, false),
+    bumpMap: getMapInfoWithTransforms(material.bumpMap, false),
+    alphaMap: getMapInfoWithTransforms(material.alphaMap, false),
+    lightMap: getMapInfoWithTransforms(material.lightMap, false),
   };
 
   // Get repeat values from first available texture
@@ -472,11 +497,37 @@ export const extractMaterialProperties = (
 };
 
 /**
+ * Helper to apply transformations to a specific texture
+ */
+const applyTextureTransformations = (
+  texture: Texture,
+  props: Partial<TextureMapInfo>,
+) => {
+  if (props.repeatX !== undefined || props.repeatY !== undefined) {
+    texture.repeat.set(
+      props.repeatX ?? texture.repeat.x,
+      props.repeatY ?? texture.repeat.y,
+    );
+  }
+  if (props.wrapS !== undefined) {
+    texture.wrapS = getWrapModeNumber(props.wrapS);
+  }
+  if (props.wrapT !== undefined) {
+    texture.wrapT = getWrapModeNumber(props.wrapT);
+  }
+  if (props.rotation !== undefined) {
+    texture.rotation = props.rotation;
+  }
+  texture.needsUpdate = true;
+};
+
+/**
  * Apply material properties to a mesh's material
  */
 export const applyMaterialProperties = (
   object: Object3D,
   props: Partial<MapProperties>,
+  targetMapKey?: keyof MaterialMaps,
 ): void => {
   if (!(object instanceof Mesh)) {
     console.warn("applyMaterialProperties: Object is not a Mesh instance");
@@ -490,7 +541,25 @@ export const applyMaterialProperties = (
   materials.forEach((material) => {
     if (!isStandardMaterial(material)) return;
 
-    // Apply scalar properties
+    // 1. Apply map-specific transformation if targeted
+    if (targetMapKey) {
+      const propName = getMaterialMapKey(targetMapKey);
+      const texture = (material as any)[propName] as Texture | null;
+      if (texture) {
+        applyTextureTransformations(texture, props as any);
+      }
+      // If we are only updating a specific map's transforms, we can stop here
+      // unless scalar properties are also passed (unlikely in this UI flow)
+      if (
+        Object.keys(props).every((k) =>
+          ["repeatX", "repeatY", "rotation", "wrapS", "wrapT"].includes(k),
+        )
+      ) {
+        return;
+      }
+    }
+
+    // 2. Apply scalar properties
     if (props.color !== undefined) {
       material.color.set(props.color);
     }
@@ -535,47 +604,36 @@ export const applyMaterialProperties = (
       );
     }
 
-    // Apply texture properties to all textures
-    const textures = [
-      material.map,
-      material.normalMap,
-      material.roughnessMap,
-      material.metalnessMap,
-      material.displacementMap,
-      material.aoMap,
-      material.emissiveMap,
-      material.bumpMap,
-      material.alphaMap,
-      material.lightMap,
-    ].filter((t): t is Texture => t !== null);
+    // 3. Apply texture properties globally if NO targetMapKey is provided
+    if (!targetMapKey) {
+      const textures = [
+        material.map,
+        material.normalMap,
+        material.roughnessMap,
+        material.metalnessMap,
+        material.displacementMap,
+        material.aoMap,
+        material.emissiveMap,
+        material.bumpMap,
+        material.alphaMap,
+        material.lightMap,
+      ].filter((t): t is Texture => t !== null);
 
-    textures.forEach((texture) => {
-      // Skip transformations for AO maps as they often use separate UVs or should remain static
-      const isAO = texture === material.aoMap;
-
-      if (!isAO) {
-        if (props.repeatX !== undefined || props.repeatY !== undefined) {
-          texture.repeat.set(
-            props.repeatX ?? texture.repeat.x,
-            props.repeatY ?? texture.repeat.y,
-          );
+      textures.forEach((texture) => {
+        // Skip global transformations for AO maps unless explicitly targeted (which shouldn't happen here)
+        const isAO = texture === material.aoMap;
+        if (!isAO) {
+          applyTextureTransformations(texture, props as any);
+          if (props.flipY !== undefined) {
+            texture.flipY = props.flipY;
+          }
+        } else if (props.flipY !== undefined) {
+          // FlipY still applies to AO
+          texture.flipY = props.flipY;
+          texture.needsUpdate = true;
         }
-        if (props.wrapS !== undefined) {
-          texture.wrapS = getWrapModeNumber(props.wrapS);
-        }
-        if (props.wrapT !== undefined) {
-          texture.wrapT = getWrapModeNumber(props.wrapT);
-        }
-        if (props.rotation !== undefined) {
-          texture.rotation = props.rotation;
-        }
-      }
-
-      if (props.flipY !== undefined) {
-        texture.flipY = props.flipY;
-      }
-      texture.needsUpdate = true;
-    });
+      });
+    }
 
     material.needsUpdate = true;
   });
