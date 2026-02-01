@@ -471,6 +471,9 @@ function MapRow({
     if (file && selectedMesh) {
       const url = URL.createObjectURL(file);
       new TextureLoader().load(url, (texture) => {
+        // Prevent race condition: only apply if the mesh is still selected
+        if (useMaterialStore.getState().selectedMesh !== selectedMesh) return;
+
         // Apply existing properties to the new texture
         const props = useMaterialStore.getState().mapProperties;
 
@@ -512,6 +515,8 @@ function MapRow({
         });
 
         setError(false);
+        // Reset input value to allow selecting the same file again
+        e.target.value = "";
       });
     }
   };
