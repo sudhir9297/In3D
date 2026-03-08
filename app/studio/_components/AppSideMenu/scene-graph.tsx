@@ -154,7 +154,7 @@ function SceneNode({
         onClick={handleClick}
       >
         <ToggleGroupItem
-          value={isRoot ? filename : object.name || object.type}
+          value={isRoot ? filename || object.type : object.name || object.type}
           aria-label="Toggle bold"
           className="w-full px-2"
         >
