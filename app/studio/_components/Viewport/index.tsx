@@ -15,14 +15,21 @@ import Scene from "./scene";
 import { loadGlbModel } from "../../utils/modelLoaders";
 import { useModelStore } from "../../store/modelStore";
 import { useViewportStore } from "../../store/viewportStore";
+import { useViewportRenderInvalidation } from "../../hooks/useViewportRenderInvalidation";
 
 import Dropzone from "./dropzone";
 import SceneGrid from "./scene-grid";
 import Postprocessing from "./postprocessing";
+import { SunLightRig } from "./sun-light-rig";
 import {
   useEnvironmentStore,
   ToneMappingMode,
 } from "../../store/environmentStore";
+import { useLightingStore } from "../../store/lightingStore";
+import {
+  loadStudioTexture,
+  setTextureLoaderRenderer,
+} from "../../utils/textureLoaders";
 
 const TONE_MAPPING_MAP: Record<ToneMappingMode, number> = {
   None: THREE.NoToneMapping,
@@ -83,25 +90,118 @@ const ViewportGizmo = () => {
   );
 };
 
+const downloadCanvasScreenshot = (canvas: HTMLCanvasElement) => {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const fileName = `in3d-screenshot-${timestamp}.png`;
+  const link = document.createElement("a");
+
+  const downloadBlob = (blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (typeof canvas.toBlob === "function") {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        downloadBlob(blob);
+      }
+    }, "image/png");
+    return;
+  }
+
+  link.href = canvas.toDataURL("image/png");
+  link.download = fileName;
+  link.click();
+};
+
+const ScreenshotController = () => {
+  const gl = useThree((state) => state.gl);
+  const invalidate = useThree((state) => state.invalidate);
+  const screenshotRequestId = useViewportStore(
+    (state) => state.screenshotRequestId,
+  );
+
+  useEffect(() => {
+    if (!screenshotRequestId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    invalidate();
+
+    const frameId = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) {
+          return;
+        }
+
+        const canvas = gl.domElement as HTMLCanvasElement | undefined;
+        if (!canvas) {
+          return;
+        }
+
+        downloadCanvasScreenshot(canvas);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frameId);
+    };
+  }, [gl, invalidate, screenshotRequestId]);
+
+  return null;
+};
+
+const SolidBackground = ({
+  color,
+  active,
+}: {
+  color: string;
+  active: boolean;
+}) => {
+  const { scene } = useThree();
+  const managedColorRef = useRef(new THREE.Color(color));
+
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+
+    managedColorRef.current.set(color);
+    scene.background = managedColorRef.current;
+  }, [active, color, scene]);
+
+  return null;
+};
+
+const CanvasInvalidator = () => {
+  useViewportRenderInvalidation();
+  return null;
+};
+
 export const ViewerWrapper = () => {
   const [isDragging, setIsDragging] = useState(false);
   const rendererRef = useRef<unknown>(null);
   const addObject = useModelStore((state) => state.addObject);
   const objects = useModelStore((state) => state.objects);
   const showGrid = useViewportStore((state) => state.showGrid);
+  const daylightEnabled = useLightingStore((state) => state.enabled);
+  const beginInteraction = useViewportStore((state) => state.beginInteraction);
+  const endInteraction = useViewportStore((state) => state.endInteraction);
 
   const {
     backgroundColor,
+    hdrEnabled,
     showHDR,
     hdrPath,
     hdrBlur,
     hdrRotation,
     hdrIntensity,
-    fogEnabled,
-    fogColor,
-    fogDensity,
-    ambientIntensity,
-    ambientColor,
     backgroundImage,
     exposure,
     toneMapping,
@@ -145,11 +245,12 @@ export const ViewerWrapper = () => {
 
       <Canvas
         id="studio-3d-canvas"
-        frameloop="always"
+        frameloop="demand"
         dpr={[1, 1.25]}
         className="absolute top-0 left-0 w-full h-full"
         onCreated={({ gl }) => {
           rendererRef.current = gl;
+          setTextureLoaderRenderer(gl);
         }}
         shadows={{
           type: THREE.PCFSoftShadowMap,
@@ -161,6 +262,7 @@ export const ViewerWrapper = () => {
               const renderer = new WebGLRenderer({
                 ...(props as any),
                 antialias: true,
+                preserveDrawingBuffer: true,
                 powerPreference: "high-performance",
               });
               renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -185,6 +287,8 @@ export const ViewerWrapper = () => {
         }
         camera={{ fov: 50, near: 0.1, far: 1000 }}
       >
+        <CanvasInvalidator />
+        <ScreenshotController />
         <GlUpdater
           toneMapping={TONE_MAPPING_MAP[toneMapping]}
           exposure={exposure}
@@ -201,19 +305,22 @@ export const ViewerWrapper = () => {
           panSpeed={1.5}
           enableDamping={true}
           dampingFactor={0.05}
+          onStart={beginInteraction}
+          onEnd={endInteraction}
         />
 
-        <ambientLight intensity={ambientIntensity} color={ambientColor} />
-
-        {fogEnabled && <fogExp2 attach="fog" args={[fogColor, fogDensity]} />}
+        {daylightEnabled ? <SunLightRig /> : null}
 
         {backgroundImage ? (
           <BackgroundImageLoader url={backgroundImage} />
         ) : (
-          <color attach="background" args={[backgroundColor]} />
+          <SolidBackground
+            color={backgroundColor}
+            active={!daylightEnabled && !(hdrEnabled && showHDR && Boolean(hdrPath))}
+          />
         )}
 
-        {hdrPath && (
+        {hdrEnabled && hdrPath && (
           <Environment
             {...({
               preset: hdrPath as any,
@@ -234,19 +341,33 @@ export const ViewerWrapper = () => {
 };
 
 const BackgroundImageLoader = ({ url }: { url: string }) => {
-  const { scene } = useThree();
+  const { gl, scene } = useThree();
 
   useEffect(() => {
-    const loader = new THREE.TextureLoader();
-    loader.load(url, (texture) => {
-      texture.colorSpace = THREE.SRGBColorSpace;
-      scene.background = texture as any;
-    });
+    let isActive = true;
+    let currentTexture: THREE.Texture | null = null;
+
+    void loadStudioTexture(url, gl)
+      .then((texture) => {
+        if (!isActive) {
+          texture.dispose();
+          return;
+        }
+
+        texture.colorSpace = THREE.SRGBColorSpace;
+        currentTexture = texture;
+        scene.background = texture as any;
+      })
+      .catch((error) => {
+        console.warn("Failed to load background texture", error);
+      });
 
     return () => {
+      isActive = false;
       scene.background = null;
+      currentTexture?.dispose();
     };
-  }, [url, scene]);
+  }, [gl, url, scene]);
 
   return null;
 };

@@ -1,21 +1,65 @@
-import { Group, Mesh, REVISION } from "three";
+import { Box3, Group, Mesh, REVISION, Vector3 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 
-const THREE_PATH = `https://unpkg.com/three@0.${REVISION}.x`;
+const THREE_ASSET_PATH = `/three/three-r${REVISION}`;
 
 const dracoLoader = new DRACOLoader().setDecoderPath(
-  `${THREE_PATH}/examples/jsm/libs/draco/gltf/`,
+  `${THREE_ASSET_PATH}/draco/gltf/`,
 );
 
 const ktx2Loader = new KTX2Loader().setTranscoderPath(
-  `${THREE_PATH}/examples/jsm/libs/basis/`,
+  `${THREE_ASSET_PATH}/basis/`,
 );
 
 let detectedRenderer: unknown = null;
 let loader: GLTFLoader | null = null;
+const targetImportSize = 8;
+const heavyMeshVertexLimit = 150_000;
+
+function normalizeImportedModel(root: Group) {
+  root.updateMatrixWorld(true);
+
+  const boundingBox = new Box3().setFromObject(root);
+  if (boundingBox.isEmpty()) {
+    return {
+      importScale: 1,
+      maxDimension: 0,
+      vertexCount: 0,
+    };
+  }
+
+  const size = boundingBox.getSize(new Vector3());
+  const maxDimension = Math.max(size.x, size.y, size.z);
+  const importScale =
+    maxDimension > 0 ? Math.min(1, targetImportSize / maxDimension) : 1;
+  let vertexCount = 0;
+
+  if (importScale !== 1) {
+    root.scale.multiplyScalar(importScale);
+    root.updateMatrixWorld(true);
+  }
+
+  root.traverse((child) => {
+    if (!(child instanceof Mesh)) {
+      return;
+    }
+
+    const meshVertexCount = child.geometry.attributes.position?.count ?? 0;
+    vertexCount += meshVertexCount;
+    child.frustumCulled = true;
+    child.castShadow = meshVertexCount <= heavyMeshVertexLimit;
+    child.receiveShadow = true;
+  });
+
+  return {
+    importScale,
+    maxDimension,
+    vertexCount,
+  };
+}
 
 function getLoader(renderer?: unknown) {
   if (renderer && renderer !== detectedRenderer) {
@@ -65,16 +109,14 @@ export async function loadGlbModel(
       throw new Error("Failed to load model scene");
     }
 
-    root.traverse((child) => {
-      if (child instanceof Mesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
+    const metrics = normalizeImportedModel(root as Group);
 
     root.userData = {
       fileName: file.name,
       fileSize: file.size,
+      importScale: metrics.importScale,
+      maxDimension: metrics.maxDimension,
+      vertexCount: metrics.vertexCount,
     };
 
     return root as Group;

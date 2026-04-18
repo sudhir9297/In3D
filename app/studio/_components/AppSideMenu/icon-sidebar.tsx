@@ -2,6 +2,7 @@ import type React from "react";
 import {
   BrushIcon,
   ColorsIcon,
+  FlowCircleIcon,
   Leaf01Icon,
 } from "@hugeicons/core-free-icons";
 
@@ -20,6 +21,7 @@ import {
 import { Icon } from "@/components/ui/huge-icon";
 
 const mainIcons = [
+  { icon: FlowCircleIcon, label: "Outline", value: "outline" },
   { icon: BrushIcon, label: "Material", value: "material" },
   { icon: Leaf01Icon, label: "Environment", value: "environment" },
   { icon: ColorsIcon, label: "Post Processing", value: "postprocessing" },

@@ -280,6 +280,12 @@ export const updateMeshTexture = (
     : [object.material];
 
   const propName = getMaterialMapKey(mapKey);
+  const previousTexture = materials.find((material) =>
+    isStandardMaterial(material),
+  ) as StandardMaterial | undefined;
+  const previousMap = previousTexture
+    ? ((previousTexture as any)[propName] as Texture | null)
+    : null;
 
   materials.forEach((material) => {
     if (!isStandardMaterial(material)) return;
@@ -287,6 +293,10 @@ export const updateMeshTexture = (
     (material as any)[propName] = texture;
     material.needsUpdate = true;
   });
+
+  if (previousMap && previousMap !== texture) {
+    previousMap.dispose();
+  }
 };
 
 // Helper to get wrap mode number

@@ -1,26 +1,70 @@
 "use client";
 
 import React from "react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   useEnvironmentStore,
   ToneMappingMode,
 } from "../../store/environmentStore";
+import { getTextureRequestUrl } from "../../utils/textureLoaders";
+import {
+  LightingPreset,
+  useLightingStore,
+} from "../../store/lightingStore";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Switch } from "@/components/ui/switch";
 import {
   ArrowDown01Icon,
   Cancel01Icon,
+  CheckmarkCircle02Icon,
   ColorPickerIcon,
   ImageAdd01Icon,
   Maximize01Icon,
-  Settings02Icon,
   Sun01Icon,
 } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/ui/huge-icon";
+
+function useRafThrottledNumber(callback: (value: number) => void) {
+  const frameRef = React.useRef<number | null>(null);
+  const latestValueRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, []);
+
+  return React.useCallback(
+    (value: number) => {
+      latestValueRef.current = value;
+      if (frameRef.current !== null) {
+        return;
+      }
+
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = null;
+        if (latestValueRef.current !== null) {
+          callback(latestValueRef.current);
+        }
+      });
+    },
+    [callback],
+  );
+}
 
 const HDR_PRESETS = [
   "apartment",
@@ -45,63 +89,147 @@ const TONE_MAPPING_MODES: ToneMappingMode[] = [
   "Neutral",
 ];
 
-export const EnvironmentSettings = () => {
-  const {
-    backgroundColor,
-    setBackgroundColor,
-    showHDR,
-    setShowHDR,
-    hdrPath,
-    setHdrPath,
-    hdrBlur,
-    setHdrBlur,
-    hdrRotation,
-    setHdrRotation,
-    hdrIntensity,
-    setHdrIntensity,
-    fogEnabled,
-    setFogEnabled,
-    fogColor,
-    setFogColor,
-    fogDensity,
-    setFogDensity,
-    ambientIntensity,
-    setAmbientIntensity,
-    ambientColor,
-    setAmbientColor,
-    backgroundImage,
-    setBackgroundImage,
-    exposure,
-    setExposure,
-    toneMapping,
-    setToneMapping,
-  } = useEnvironmentStore();
+const DAYLIGHT_PRESETS: Array<{
+  value: LightingPreset;
+  label: string;
+  time: number;
+}> = [
+  { value: "dawn", label: "Dawn", time: 4 },
+  { value: "golden", label: "Golden", time: 8 },
+  { value: "morning", label: "Morning", time: 24 },
+  { value: "brunch", label: "Brunch", time: 50 },
+  { value: "dusk", label: "Dusk", time: 92 },
+];
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+const TIME_MARKS = [
+  { label: "5 AM", value: 0 },
+  { label: "9 AM", value: 25 },
+  { label: "1 PM", value: 50 },
+  { label: "5 PM", value: 75 },
+  { label: "9 PM", value: 100 },
+];
+
+const ORIENTATION_MARKS = [0, 90, 180, 270, 360];
+
+function formatLightingClock(currentTime: number) {
+  const startMinutes = 5 * 60;
+  const endMinutes = 21 * 60;
+  const totalMinutes = Math.round(
+    startMinutes + ((endMinutes - startMinutes) * currentTime) / 100,
+  );
+  const hours24 = Math.floor(totalMinutes / 60) % 24;
+  const minutes = totalMinutes % 60;
+  const meridiem = hours24 >= 12 ? "PM" : "AM";
+  const hours = hours24 % 12 || 12;
+
+  return `${hours}:${minutes
+    .toString()
+    .padStart(2, "0")} ${meridiem}`;
+}
+
+function getPresetDetails(preset: LightingPreset) {
+  return (
+    DAYLIGHT_PRESETS.find((entry) => entry.value === preset) ?? DAYLIGHT_PRESETS[0]
+  );
+}
+
+function TickLabels({
+  items,
+  formatter,
+}: {
+  items: readonly number[] | Array<{ label: string; value: number }>;
+  formatter?: (value: number) => string;
+}) {
+  return (
+    <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-muted-foreground/80">
+      {items.map((item) => {
+        const value = typeof item === "number" ? item : item.value;
+        const label =
+          typeof item === "number" ? formatter?.(item) ?? `${item}` : item.label;
+
+        return <span key={value}>{label}</span>;
+      })}
+    </div>
+  );
+}
+
+export const EnvironmentSettings = () => {
+  const [backgroundPreviewError, setBackgroundPreviewError] = React.useState(false);
+  const backgroundColor = useEnvironmentStore((state) => state.backgroundColor);
+  const setBackgroundColor = useEnvironmentStore(
+    (state) => state.setBackgroundColor,
+  );
+  const hdrEnabled = useEnvironmentStore((state) => state.hdrEnabled);
+  const setHdrEnabled = useEnvironmentStore((state) => state.setHdrEnabled);
+  const showHDR = useEnvironmentStore((state) => state.showHDR);
+  const setShowHDR = useEnvironmentStore((state) => state.setShowHDR);
+  const hdrPath = useEnvironmentStore((state) => state.hdrPath);
+  const setHdrPath = useEnvironmentStore((state) => state.setHdrPath);
+  const hdrBlur = useEnvironmentStore((state) => state.hdrBlur);
+  const setHdrBlur = useEnvironmentStore((state) => state.setHdrBlur);
+  const hdrRotation = useEnvironmentStore((state) => state.hdrRotation);
+  const setHdrRotation = useEnvironmentStore((state) => state.setHdrRotation);
+  const hdrIntensity = useEnvironmentStore((state) => state.hdrIntensity);
+  const setHdrIntensity = useEnvironmentStore((state) => state.setHdrIntensity);
+  const backgroundImage = useEnvironmentStore((state) => state.backgroundImage);
+  const setBackgroundImage = useEnvironmentStore(
+    (state) => state.setBackgroundImage,
+  );
+  const exposure = useEnvironmentStore((state) => state.exposure);
+  const setExposure = useEnvironmentStore((state) => state.setExposure);
+  const toneMapping = useEnvironmentStore((state) => state.toneMapping);
+  const setToneMapping = useEnvironmentStore((state) => state.setToneMapping);
+  const lightingEnabled = useLightingStore((state) => state.enabled);
+  const currentTime = useLightingStore((state) => state.currentTime);
+  const preset = useLightingStore((state) => state.preset);
+  const orientation = useLightingStore((state) => state.orientation);
+  const setLightingEnabled = useLightingStore((state) => state.setEnabled);
+  const setCurrentTime = useLightingStore((state) => state.setCurrentTime);
+  const setPreset = useLightingStore((state) => state.setPreset);
+  const setOrientation = useLightingStore((state) => state.setOrientation);
+  const resetLighting = useLightingStore((state) => state.reset);
+  const activePreset = getPresetDetails(preset);
+  const throttledCurrentTime = useRafThrottledNumber(setCurrentTime);
+  const throttledOrientation = useRafThrottledNumber(setOrientation);
+  const throttledHdrIntensity = useRafThrottledNumber(setHdrIntensity);
+  const throttledHdrRotation = useRafThrottledNumber(setHdrRotation);
+  const throttledHdrBlur = useRafThrottledNumber(setHdrBlur);
+  const throttledExposure = useRafThrottledNumber(setExposure);
+
+  const handleImageUpload = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       // Revoke the old URL if it exists to prevent memory leaks
-      if (backgroundImage && backgroundImage.startsWith("blob:")) {
-        URL.revokeObjectURL(backgroundImage);
+      const previousUrl = backgroundImage
+        ? getTextureRequestUrl(backgroundImage)
+        : null;
+      if (previousUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(previousUrl);
       }
-      const url = URL.createObjectURL(file);
+      const objectUrl = URL.createObjectURL(file);
+      const url = `${objectUrl}#${encodeURIComponent(file.name)}`;
+      setBackgroundPreviewError(false);
       setBackgroundImage(url);
     }
     // Reset the input value so the same file can be uploaded again
     e.target.value = "";
-  };
+  }, [backgroundImage, setBackgroundImage]);
 
-  const handleClearImage = () => {
-    if (backgroundImage && backgroundImage.startsWith("blob:")) {
-      URL.revokeObjectURL(backgroundImage);
+  const handleClearImage = React.useCallback(() => {
+    const requestUrl = backgroundImage
+      ? getTextureRequestUrl(backgroundImage)
+      : null;
+    if (requestUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(requestUrl);
     }
+    setBackgroundPreviewError(false);
     setBackgroundImage(null);
-  };
+  }, [backgroundImage, setBackgroundImage]);
 
   return (
     <div className="space-y-3 px-2 overflow-y-auto flex-1 h-full min-h-0">
       {/* Background Section */}
-      <Collapsible defaultOpen>
+      <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={ColorPickerIcon} className="h-4 w-4" />
@@ -142,22 +270,25 @@ export const EnvironmentSettings = () => {
                       : "hover:border-chart-2 border-muted-foreground/30",
                   )}
                 >
-                  {backgroundImage ? (
+                  {backgroundImage && !backgroundPreviewError ? (
                     <img
                       src={backgroundImage}
                       alt="Background Preview"
                       className="w-full h-full object-cover"
+                      onError={() => setBackgroundPreviewError(true)}
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center p-2 text-center text-muted-foreground">
                       <Icon icon={ImageAdd01Icon} className="mb-1 h-6 w-6 opacity-50" />
-                      <span className="text-[10px]">Upload Image</span>
+                      <span className="text-[10px]">
+                        {backgroundImage ? "Preview unavailable" : "Upload Image / KTX2"}
+                      </span>
                     </div>
                   )}
                   <input
                     type="file"
                     className="hidden"
-                    accept="image/*"
+                    accept="image/*,.ktx2"
                     onChange={handleImageUpload}
                   />
                 </label>
@@ -176,8 +307,164 @@ export const EnvironmentSettings = () => {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* HDR Section */}
-      <Collapsible defaultOpen>
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
+          <div className="flex items-center gap-2">
+            <Icon icon={Sun01Icon} className="h-4 w-4" />
+            <span className="font-medium text-sm">Daylight Rig</span>
+          </div>
+          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-3 mt-2 px-2 pb-2">
+            <div className="flex items-start justify-between gap-3 border-b border-border pb-3">
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Stylized sunlight
+                </p>
+                </div>
+                <Switch
+                  checked={lightingEnabled}
+                onCheckedChange={setLightingEnabled}
+              />
+            </div>
+
+            {lightingEnabled ? (
+              <>
+                <div className="flex items-end justify-between gap-3 border-b border-border pb-4">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+                      Live Time
+                    </p>
+                    <p className="mt-2 text-[1.375rem] font-bold leading-none tracking-[-0.04em] text-foreground">
+                      {formatLightingClock(currentTime)}
+                    </p>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        {activePreset.label}
+                        <Icon icon={ArrowDown01Icon} className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      <DropdownMenuRadioGroup
+                        value={preset}
+                        onValueChange={(value) => {
+                          const selected = getPresetDetails(
+                            value as LightingPreset,
+                          );
+                          setPreset(selected.value);
+                          setCurrentTime(selected.time);
+                        }}
+                      >
+                        {DAYLIGHT_PRESETS.map((option) => (
+                          <DropdownMenuRadioItem
+                            key={option.value}
+                            value={option.value}
+                            className="items-start py-2"
+                          >
+                            <div>
+                              <div className="text-sm font-medium text-foreground">
+                                {option.label}
+                              </div>
+                            </div>
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-foreground">
+                          Time Of Day
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">
+                        {currentTime.toFixed(1)}
+                      </span>
+                    </div>
+
+                    <div
+                      className="rounded-full px-1 py-1"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, #20285a 0%, #38458a 12%, #8dbde8 28%, #ecd899 46%, #ffaf52 66%, #d86449 84%, #1f2145 100%)",
+                      }}
+                    >
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        value={currentTime}
+                        onChange={(event) =>
+                          throttledCurrentTime(parseFloat(event.target.value))
+                        }
+                        className="block h-5 w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:mt-[-6px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#f6f0e4] [&::-webkit-slider-thumb]:shadow-[0_2px_10px_rgba(0,0,0,0.28)]"
+                      />
+                    </div>
+
+                    <TickLabels items={TIME_MARKS} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-foreground">
+                          Room Orientation
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-muted px-2 py-1 font-mono text-[10px] text-muted-foreground">
+                        {Math.round(orientation)}°
+                      </span>
+                    </div>
+
+                    <div className="rounded-full bg-muted px-1 py-1">
+                      <input
+                        type="range"
+                        min={0}
+                        max={360}
+                        step={1}
+                        value={orientation}
+                        onChange={(event) =>
+                          throttledOrientation(parseFloat(event.target.value))
+                        }
+                        className="block h-5 w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-[linear-gradient(90deg,rgba(47,42,36,0.18),rgba(47,42,36,0.42),rgba(47,42,36,0.18))] [&::-webkit-slider-thumb]:mt-[-6px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#f6f0e4] [&::-webkit-slider-thumb]:shadow-[0_2px_10px_rgba(0,0,0,0.28)]"
+                      />
+                    </div>
+
+                    <TickLabels
+                      items={ORIENTATION_MARKS}
+                      formatter={(value) => `${value}°`}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-border pt-3">
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <Icon
+                        icon={CheckmarkCircle02Icon}
+                        className="h-3.5 w-3.5"
+                      />
+                      <span>{activePreset.label}</span>
+                    </div>
+                    <Button variant="ghost" size="xs" onClick={resetLighting}>
+                      Reset
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={Sun01Icon} className="h-4 w-4" />
@@ -189,22 +476,20 @@ export const EnvironmentSettings = () => {
           <div className="space-y-3 mt-2 px-2 pb-2">
             <div className="flex items-center justify-between py-1">
               <label className="text-xs text-muted-foreground">
+                Enable HDR Environment
+              </label>
+              <Switch checked={hdrEnabled} onCheckedChange={setHdrEnabled} />
+            </div>
+
+            <div className="flex items-center justify-between py-1">
+              <label className="text-xs text-muted-foreground">
                 Show HDR Background
               </label>
-              <button
-                onClick={() => setShowHDR(!showHDR)}
-                className={cn(
-                  "group relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-chart-2 focus:ring-offset-2",
-                  showHDR ? "bg-chart-2" : "bg-muted-foreground/30",
-                )}
-              >
-                <span
-                  className={cn(
-                    "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-sm ring-0 transition duration-200 ease-in-out",
-                    showHDR ? "translate-x-4" : "translate-x-0",
-                  )}
-                />
-              </button>
+              <Switch
+                checked={hdrEnabled && showHDR}
+                onCheckedChange={setShowHDR}
+                disabled={!hdrEnabled}
+              />
             </div>
 
             <div className="flex items-center justify-between">
@@ -212,6 +497,7 @@ export const EnvironmentSettings = () => {
               <select
                 value={hdrPath}
                 onChange={(e) => setHdrPath(e.target.value)}
+                disabled={!hdrEnabled}
                 className="text-xs bg-muted border rounded px-2 py-1 cursor-pointer outline-none focus:ring-1 focus:ring-chart-2 w-32"
               >
                 {HDR_PRESETS.map((p) => (
@@ -233,6 +519,7 @@ export const EnvironmentSettings = () => {
                   step={0.1}
                   min={0}
                   max={5}
+                  disabled={!hdrEnabled}
                   onChange={(e) =>
                     setHdrIntensity(parseFloat(e.target.value) || 0)
                   }
@@ -245,7 +532,10 @@ export const EnvironmentSettings = () => {
                 max={5}
                 step={0.1}
                 value={hdrIntensity}
-                onChange={(e) => setHdrIntensity(parseFloat(e.target.value))}
+                disabled={!hdrEnabled}
+                onChange={(e) =>
+                  throttledHdrIntensity(parseFloat(e.target.value))
+                }
                 className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-chart-2"
               />
             </div>
@@ -261,6 +551,7 @@ export const EnvironmentSettings = () => {
                   step={1}
                   min={0}
                   max={360}
+                  disabled={!hdrEnabled}
                   onChange={(e) =>
                     setHdrRotation(parseFloat(e.target.value) || 0)
                   }
@@ -273,7 +564,10 @@ export const EnvironmentSettings = () => {
                 max={360}
                 step={1}
                 value={hdrRotation}
-                onChange={(e) => setHdrRotation(parseFloat(e.target.value))}
+                disabled={!hdrEnabled}
+                onChange={(e) =>
+                  throttledHdrRotation(parseFloat(e.target.value))
+                }
                 className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-chart-2"
               />
             </div>
@@ -289,6 +583,7 @@ export const EnvironmentSettings = () => {
                   step={0.01}
                   min={0}
                   max={1}
+                  disabled={!hdrEnabled}
                   onChange={(e) => setHdrBlur(parseFloat(e.target.value) || 0)}
                   className="w-16 h-5 text-[10px] text-right bg-muted/50 border-none outline-none focus:ring-1 focus:ring-chart-2 rounded px-1 font-mono"
                 />
@@ -299,147 +594,8 @@ export const EnvironmentSettings = () => {
                 max={1}
                 step={0.01}
                 value={hdrBlur}
-                onChange={(e) => setHdrBlur(parseFloat(e.target.value))}
-                className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-chart-2"
-              />
-            </div>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Lighting Section */}
-      <Collapsible defaultOpen>
-        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
-          <div className="flex items-center gap-2">
-            <Icon icon={Sun01Icon} className="h-4 w-4 opacity-70" />
-            <span className="font-medium text-sm">Ambient Light</span>
-          </div>
-          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="space-y-3 mt-2 px-2 pb-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs text-muted-foreground">Color</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={ambientColor}
-                  onChange={(e) => setAmbientColor(e.target.value)}
-                  className="w-6 h-6 rounded border cursor-pointer bg-transparent"
-                />
-                <input
-                  type="text"
-                  value={ambientColor}
-                  onChange={(e) => setAmbientColor(e.target.value)}
-                  className="w-16 h-5 text-[10px] text-right bg-muted/50 border-none outline-none focus:ring-1 focus:ring-chart-2 rounded px-1 font-mono uppercase"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-xs text-muted-foreground">
-                  Intensity
-                </label>
-                <input
-                  type="number"
-                  value={ambientIntensity}
-                  step={0.1}
-                  min={0}
-                  max={2}
-                  onChange={(e) =>
-                    setAmbientIntensity(parseFloat(e.target.value) || 0)
-                  }
-                  className="w-16 h-5 text-[10px] text-right bg-muted/50 border-none outline-none focus:ring-1 focus:ring-chart-2 rounded px-1 font-mono"
-                />
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={2}
-                step={0.1}
-                value={ambientIntensity}
-                onChange={(e) =>
-                  setAmbientIntensity(parseFloat(e.target.value))
-                }
-                className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-chart-2"
-              />
-            </div>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Fog Section */}
-      <Collapsible defaultOpen>
-        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
-          <div className="flex items-center gap-2">
-            <Icon icon={Settings02Icon} className="h-4 w-4" />
-            <span className="font-medium text-sm">Atmospheric Fog</span>
-          </div>
-          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="space-y-3 mt-2 px-2 pb-2">
-            <div className="flex items-center justify-between py-1">
-              <label className="text-xs text-muted-foreground">
-                Enable Fog
-              </label>
-              <button
-                onClick={() => setFogEnabled(!fogEnabled)}
-                className={cn(
-                  "group relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-chart-2 focus:ring-offset-2",
-                  fogEnabled ? "bg-chart-2" : "bg-muted-foreground/30",
-                )}
-              >
-                <span
-                  className={cn(
-                    "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-sm ring-0 transition duration-200 ease-in-out",
-                    fogEnabled ? "translate-x-4" : "translate-x-0",
-                  )}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="text-xs text-muted-foreground">Color</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={fogColor}
-                  onChange={(e) => setFogColor(e.target.value)}
-                  className="w-6 h-6 rounded border cursor-pointer bg-transparent"
-                />
-                <input
-                  type="text"
-                  value={fogColor}
-                  onChange={(e) => setFogColor(e.target.value)}
-                  className="w-16 h-5 text-[10px] text-right bg-muted/50 border-none outline-none focus:ring-1 focus:ring-chart-2 rounded px-1 font-mono uppercase"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <label className="text-xs text-muted-foreground">Density</label>
-                <input
-                  type="number"
-                  value={fogDensity}
-                  step={0.001}
-                  min={0}
-                  max={0.1}
-                  onChange={(e) =>
-                    setFogDensity(parseFloat(e.target.value) || 0)
-                  }
-                  className="w-16 h-5 text-[10px] text-right bg-muted/50 border-none outline-none focus:ring-1 focus:ring-chart-2 rounded px-1 font-mono"
-                />
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={0.1}
-                step={0.001}
-                value={fogDensity}
-                onChange={(e) => setFogDensity(parseFloat(e.target.value))}
+                disabled={!hdrEnabled}
+                onChange={(e) => throttledHdrBlur(parseFloat(e.target.value))}
                 className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-chart-2"
               />
             </div>
@@ -448,7 +604,7 @@ export const EnvironmentSettings = () => {
       </Collapsible>
 
       {/* Rendering Section */}
-      <Collapsible defaultOpen>
+      <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={Maximize01Icon} className="h-4 w-4" />
@@ -496,7 +652,7 @@ export const EnvironmentSettings = () => {
                 max={4}
                 step={0.1}
                 value={exposure}
-                onChange={(e) => setExposure(parseFloat(e.target.value))}
+                onChange={(e) => throttledExposure(parseFloat(e.target.value))}
                 className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-chart-2"
               />
             </div>
@@ -509,5 +665,3 @@ export const EnvironmentSettings = () => {
     </div>
   );
 };
-
-export default EnvironmentSettings;

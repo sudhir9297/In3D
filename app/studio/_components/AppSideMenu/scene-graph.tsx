@@ -1,5 +1,12 @@
-import React, { useState } from "react";
-import { useModelStore } from "../../store/modelStore";
+"use client";
+
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Material, Mesh, Object3D, Group } from "three";
 import {
   ArrowDown01Icon,
@@ -11,22 +18,218 @@ import {
   FolderOpenIcon,
   Layers01Icon,
 } from "@hugeicons/core-free-icons";
-
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/animate-ui/base/toggle-group";
-
 import { AnimatePresence } from "motion/react";
+
 import { Icon } from "@/components/ui/huge-icon";
+
+import { useModelStore } from "../../store/modelStore";
+
+const OUTLINE_GUTTER = 8;
+
+function collectNodeIds(object: Object3D, ids: Set<string>) {
+  ids.add(object.uuid);
+  object.children.forEach((child) => collectNodeIds(child, ids));
+}
+
+function isDescendantOf(node: Object3D, ancestor: Object3D) {
+  let current = node.parent;
+
+  while (current) {
+    if (current === ancestor) {
+      return true;
+    }
+    current = current.parent;
+  }
+
+  return false;
+}
+
+type VisibilityOptions = {
+  horizontalAlign?: "nearest" | "start";
+};
 
 const SceneGraph = () => {
   const { objects, selectedObject, setSelectedObject } = useModelStore();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef(new Map<string, HTMLLIElement>());
+  const pendingCollapseRef = useRef<{
+    nodeId: string;
+    resetLeft: boolean;
+  } | null>(null);
+
+  const rootIds = useMemo(() => objects.map((object) => object.uuid), [objects]);
+  const allNodeIds = useMemo(() => {
+    const ids = new Set<string>();
+    objects.forEach((object) => collectNodeIds(object, ids));
+    return ids;
+  }, [objects]);
+
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () => new Set(rootIds),
+  );
+
+  const registerRowRef = useCallback(
+    (nodeId: string) => (node: HTMLLIElement | null) => {
+      if (node) {
+        rowRefs.current.set(nodeId, node);
+        return;
+      }
+
+      rowRefs.current.delete(nodeId);
+    },
+    [],
+  );
+
+  const ensureRowVisible = useCallback(
+    (nodeId: string, options: VisibilityOptions = {}) => {
+      const row = rowRefs.current.get(nodeId);
+      const scrollContainer = scrollContainerRef.current;
+
+      if (!row || !scrollContainer) {
+        return;
+      }
+
+      const horizontalAlign = options.horizontalAlign ?? "nearest";
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+      const rowTop =
+        rowRect.top - containerRect.top + scrollContainer.scrollTop;
+      const rowBottom = rowTop + rowRect.height;
+      const rowLeft =
+        rowRect.left - containerRect.left + scrollContainer.scrollLeft;
+      const rowRight = rowLeft + rowRect.width;
+
+      let nextTop = scrollContainer.scrollTop;
+      let nextLeft = scrollContainer.scrollLeft;
+
+      if (rowTop < nextTop) {
+        nextTop = Math.max(0, rowTop - OUTLINE_GUTTER);
+      } else if (rowBottom > nextTop + scrollContainer.clientHeight) {
+        nextTop = Math.max(
+          0,
+          rowBottom - scrollContainer.clientHeight + OUTLINE_GUTTER,
+        );
+      }
+
+      if (horizontalAlign === "start") {
+        nextLeft = Math.max(0, rowLeft - OUTLINE_GUTTER);
+      } else if (rowLeft < nextLeft) {
+        nextLeft = Math.max(0, rowLeft - OUTLINE_GUTTER);
+      } else if (rowRight > nextLeft + scrollContainer.clientWidth) {
+        nextLeft = Math.max(
+          0,
+          rowRight - scrollContainer.clientWidth + OUTLINE_GUTTER,
+        );
+      }
+
+      if (
+        nextTop !== scrollContainer.scrollTop ||
+        nextLeft !== scrollContainer.scrollLeft
+      ) {
+        scrollContainer.scrollTo({
+          top: nextTop,
+          left: nextLeft,
+          behavior: "auto",
+        });
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    setExpandedIds((previous) => {
+      const next = new Set<string>();
+
+      previous.forEach((nodeId) => {
+        if (allNodeIds.has(nodeId)) {
+          next.add(nodeId);
+        }
+      });
+
+      rootIds.forEach((rootId) => next.add(rootId));
+
+      return next;
+    });
+  }, [allNodeIds, rootIds]);
+
+  useEffect(() => {
+    if (!selectedObject || allNodeIds.has(selectedObject.uuid)) {
+      return;
+    }
+
+    setSelectedObject(null);
+  }, [allNodeIds, selectedObject, setSelectedObject]);
+
+  useEffect(() => {
+    if (!selectedObject) {
+      return;
+    }
+
+    ensureRowVisible(selectedObject.uuid);
+  }, [ensureRowVisible, selectedObject]);
+
+  useEffect(() => {
+    const pendingCollapse = pendingCollapseRef.current;
+
+    if (!pendingCollapse) {
+      return;
+    }
+
+    pendingCollapseRef.current = null;
+
+    if (pendingCollapse.resetLeft && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = 0;
+      ensureRowVisible(pendingCollapse.nodeId, { horizontalAlign: "start" });
+      return;
+    }
+
+    ensureRowVisible(pendingCollapse.nodeId);
+  }, [ensureRowVisible, expandedIds]);
+
+  const handleSelect = useCallback(
+    (object: Object3D) => {
+      setSelectedObject(object);
+      ensureRowVisible(object.uuid);
+    },
+    [ensureRowVisible, setSelectedObject],
+  );
+
+  const handleToggle = useCallback(
+    (object: Object3D, isRoot = false) => {
+      const nodeId = object.uuid;
+      const isExpanded = expandedIds.has(nodeId);
+
+      if (!isExpanded) {
+        setExpandedIds((previous) => {
+          const next = new Set(previous);
+          next.add(nodeId);
+          return next;
+        });
+        return;
+      }
+
+      if (selectedObject && isDescendantOf(selectedObject, object)) {
+        setSelectedObject(object);
+      }
+
+      pendingCollapseRef.current = {
+        nodeId,
+        resetLeft: isRoot,
+      };
+
+      setExpandedIds((previous) => {
+        const next = new Set(previous);
+        next.delete(nodeId);
+        return next;
+      });
+    },
+    [expandedIds, selectedObject, setSelectedObject],
+  );
 
   if (objects.length === 0) {
     return (
       <div className="p-6 text-center">
-        <p className="font-medium mb-2">No models In the Scene</p>
+        <p className="mb-2 font-medium">No models In the Scene</p>
         <p className="mt-4 text-muted-foreground">
           Drag and drop 3D model files to view their scene graph.
         </p>
@@ -35,28 +238,25 @@ const SceneGraph = () => {
   }
 
   return (
-    <div className="h-full">
-      {objects.map((object, index) => (
-        <div key={`${object.userData?.fileName}-${index}`} className="">
-          <ul>
-            <ToggleGroup
-              defaultValue={[object.userData?.fileName]}
-              toggleMultiple={false}
-            >
-              <SceneNode
-                object={object}
-                level={0}
-                isRoot
-                modelIndex={index}
-                filename={object.userData?.fileName}
-                isLast={index === objects.length - 1}
-                selectedObject={selectedObject}
-                setSelectedObject={setSelectedObject}
-              />
-            </ToggleGroup>
+    <div ref={scrollContainerRef} className="h-full overflow-auto px-2 pb-4">
+      <div className="inline-block min-w-full w-max align-top">
+        {objects.map((object) => (
+          <ul key={object.uuid}>
+            <SceneNode
+              expandedIds={expandedIds}
+              filename={object.userData?.fileName}
+              isLast={false}
+              isRoot
+              level={0}
+              object={object}
+              onSelect={handleSelect}
+              onToggle={handleToggle}
+              registerRowRef={registerRowRef}
+              selectedObject={selectedObject}
+            />
           </ul>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };
@@ -64,52 +264,48 @@ const SceneGraph = () => {
 export default SceneGraph;
 
 interface SceneNodeProps {
-  object: Object3D;
-  level: number;
-  isRoot?: boolean;
+  expandedIds: Set<string>;
   filename?: string;
-  modelIndex?: number;
-  isLast?: boolean;
+  isLast: boolean;
+  isRoot?: boolean;
+  level: number;
+  object: Object3D;
+  onSelect: (object: Object3D) => void;
+  onToggle: (object: Object3D, isRoot?: boolean) => void;
+  registerRowRef: (nodeId: string) => (node: HTMLLIElement | null) => void;
   selectedObject: Object3D | null;
-  setSelectedObject: (object: Object3D | null) => void;
 }
 
 function SceneNode({
-  object,
-  level,
-  isRoot,
+  expandedIds,
   filename,
-  isLast = false,
+  isLast,
+  isRoot,
+  level,
+  object,
+  onSelect,
+  onToggle,
+  registerRowRef,
   selectedObject,
-  setSelectedObject,
 }: SceneNodeProps) {
-  const [expanded, setExpanded] = useState(isRoot);
-
+  const isExpanded = expandedIds.has(object.uuid);
   const hasChildren = object.children.length > 0;
   const isSelected = selectedObject === object;
 
-  const toggleExpand = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpanded(!expanded);
-  };
-
-  const handleClick = () => {
-    setSelectedObject(object);
-  };
-
-  const getNodeIcon = (isOpen: boolean | undefined, isActive: boolean) => {
-    if (isRoot || object instanceof Group)
+  const getNodeIcon = (isOpen: boolean, isActive: boolean) => {
+    if (isRoot || object instanceof Group) {
       return (
         <AnimatePresence mode="wait">
-          {isOpen && isOpen ? (
+          {isOpen ? (
             <Icon icon={FolderOpenIcon} className="h-4 w-4" />
           ) : (
             <Icon icon={Folder01Icon} className="h-4 w-4" />
           )}
         </AnimatePresence>
       );
+    }
 
-    if (object instanceof Mesh)
+    if (object instanceof Mesh) {
       return (
         <AnimatePresence mode="wait">
           {isActive ? (
@@ -119,106 +315,91 @@ function SceneNode({
           )}
         </AnimatePresence>
       );
+    }
 
     if (object instanceof Material) {
       return <Icon icon={ColorPickerIcon} className="h-4 w-4" />;
     }
+
     return <Icon icon={Layers01Icon} className="h-4 w-4" />;
   };
 
   return (
-    <li className="relative w-full">
-      {/* Vertical line from parent to this item's position */}
-      {level > 0 && (
+    <li ref={registerRowRef(object.uuid)} className="relative w-max">
+      {level > 0 ? (
         <div
-          className="absolute left-[-16px] top-0 w-[1px] bg-gray-300 dark:bg-gray-600 "
+          className="absolute left-[-16px] top-0 w-px bg-[#d8d2c9]"
           style={{
             height: isLast && !hasChildren ? "16px" : "100%",
           }}
         />
-      )}
+      ) : null}
 
-      {/* Horizontal line to this item */}
-      {level > 0 && (
+      {level > 0 ? (
         <div
-          className="absolute h-[1px] bg-gray-300 dark:bg-gray-600"
+          className="absolute h-px bg-[#d8d2c9]"
           style={{
             left: "-16px",
             top: "16px",
             width: "16px",
           }}
         />
-      )}
+      ) : null}
 
       <div
-        className={`flex items-center cursor-pointer group rounded-md hover:bg-accent  ${
-          isSelected ? "text-chart-2 bg-accent rounded-md" : ""
+        className={`inline-flex items-center rounded-md ${
+          isSelected ? "bg-accent text-chart-2" : ""
         }`}
-        onClick={handleClick}
       >
-        <ToggleGroupItem
-          value={isRoot ? filename || object.type : object.name || object.type}
-          aria-label="Toggle bold"
-          className="w-full px-2"
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle(object, isRoot);
+          }}
+          className={`flex h-5 w-5 items-center justify-center text-[#6e6961] ${
+            hasChildren ? "" : "invisible"
+          }`}
+          aria-label={isExpanded ? "Collapse" : "Expand"}
         >
-          <div
-            onClick={toggleExpand}
-            className={`w-5 h-5 flex  items-center justify-center ${
-              !hasChildren ? "invisible" : ""
-            }`}
-            aria-label={expanded ? "Collapse" : "Expand"}
-          >
-            {expanded ? (
-              <Icon icon={ArrowDown01Icon} size={16} />
-            ) : (
-              <Icon icon={ArrowRight01Icon} size={16} />
-            )}
-          </div>
+          {isExpanded ? (
+            <Icon icon={ArrowDown01Icon} size={16} />
+          ) : (
+            <Icon icon={ArrowRight01Icon} size={16} />
+          )}
+        </button>
 
-          <div className="flex items-center  text-sm w-full justify-between  pr-2 ">
-            <div className="flex items-center">
-              <span className="mr-1.5">
-                {getNodeIcon(expanded, isSelected)}
-              </span>
-
-              <span
-                className={`truncate ${
-                  isSelected
-                    ? "text-chart-2"
-                    : "text-gray-700 dark:text-gray-200"
-                }`}
-                style={{ maxWidth: "160px" }}
-              >
-                {isRoot ? filename : object.name || object.type}
-              </span>
-            </div>
-
-            {/* {object instanceof Mesh && (
-              <span className="text-[10px] text-muted-foreground">
-                {(
-                  object.geometry.attributes.position?.count || 0
-                ).toLocaleString()}{" "}
-                verts
-              </span>
-            )} */}
-          </div>
-        </ToggleGroupItem>
+        <button
+          type="button"
+          onClick={() => onSelect(object)}
+          className={`flex min-w-max items-center rounded-md px-2 py-1 text-sm hover:bg-accent ${
+            isSelected ? "text-chart-2" : "text-[#3a3732]"
+          }`}
+        >
+          <span className="mr-1.5">{getNodeIcon(isExpanded, isSelected)}</span>
+          <span className="whitespace-nowrap">
+            {isRoot ? filename : object.name || object.type}
+          </span>
+        </button>
       </div>
 
-      {expanded && hasChildren && (
-        <ul className="pl-4 ml-4 ">
+      {isExpanded && hasChildren ? (
+        <ul className="ml-4 pl-4">
           {object.children.map((child, index) => (
             <SceneNode
-              key={`${child.uuid}-${index}`}
-              object={child}
-              level={level + 1}
+              key={child.uuid}
+              expandedIds={expandedIds}
               isLast={index === object.children.length - 1}
+              level={level + 1}
+              object={child}
+              onSelect={onSelect}
+              onToggle={onToggle}
+              registerRowRef={registerRowRef}
               selectedObject={selectedObject}
-              setSelectedObject={setSelectedObject}
             />
           ))}
         </ul>
-      )}
+      ) : null}
     </li>
   );
 }

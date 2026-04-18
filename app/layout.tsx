@@ -12,7 +12,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Darpan Studio",
+  title: "In3d Studio",
   description: "A 3D Configurator",
 };
 

@@ -1,71 +1,71 @@
-import { Grid } from "@react-three/drei";
-import React from "react";
+"use client";
+
+import React, { useMemo } from "react";
 import * as THREE from "three";
 
 function AxisLines() {
   return (
-    <group position={[0, 0.002, 0]} userData={{ isGrid: true }}>
-      {/* X Axis - Red */}
+    <group position={[0, 0.01, 0]} userData={{ isGrid: true }}>
       <line>
         <bufferGeometry>
           <float32BufferAttribute
             attach="attributes-position"
-            args={[new Float32Array([-10, 0, 0, 10, 0, 0]), 3]}
+            args={[new Float32Array([-18, 0, 0, 18, 0, 0]), 3]}
           />
         </bufferGeometry>
         <lineBasicMaterial
-          color="red"
-          linewidth={0.7} // Note: may not be supported on all platforms
-          transparent={true}
-          opacity={0.3} // Lower opacity for subtle effect
+          color="#c45c52"
+          transparent
+          opacity={0.48}
           depthWrite={false}
-          depthTest={true}
-          polygonOffset={true}
-          polygonOffsetFactor={-1}
-          polygonOffsetUnits={-1}
         />
       </line>
 
-      {/* Z Axis - Blue */}
       <line>
         <bufferGeometry>
           <float32BufferAttribute
             attach="attributes-position"
-            args={[new Float32Array([0, 0, -10, 0, 0, 10]), 3]}
+            args={[new Float32Array([0, 0, -18, 0, 0, 18]), 3]}
           />
         </bufferGeometry>
         <lineBasicMaterial
-          color="blue"
-          linewidth={0.7}
-          transparent={true}
-          opacity={0.3}
+          color="#4f7398"
+          transparent
+          opacity={0.48}
           depthWrite={false}
-          depthTest={true}
-          polygonOffset={true}
-          polygonOffsetFactor={-1}
-          polygonOffsetUnits={-1}
         />
       </line>
     </group>
   );
 }
 
+function HelperGrid() {
+  const grid = useMemo(() => {
+    const helper = new THREE.GridHelper(100, 100, "#a9a299", "#d2cbc2");
+    helper.position.set(0, 0.001, 0);
+    helper.userData = { isGrid: true };
+
+    const materials = Array.isArray(helper.material)
+      ? helper.material
+      : [helper.material];
+
+    materials.forEach((material) => {
+      material.transparent = true;
+      material.opacity = 0.58;
+      material.depthWrite = false;
+      material.toneMapped = false;
+    });
+
+    return helper;
+  }, []);
+
+  return <primitive object={grid} raycast={() => null} />;
+}
+
 function SceneGrid() {
   return (
     <>
-      <Grid
-        position={[0, -0.005, 0]}
-        args={[100, 100]}
-        side={THREE.DoubleSide}
-        cellColor={"#333333"}
-        sectionColor={"#3c3c3c"}
-        cellThickness={0.7}
-        sectionThickness={1.1}
-        fadeDistance={50}
-        fadeStrength={3}
-        userData={{ isGrid: true }}
-        raycast={() => null}
-      />
+      <HelperGrid />
       <AxisLines />
     </>
   );

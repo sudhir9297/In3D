@@ -3,6 +3,8 @@ import {
   Cursor02Icon,
   GridTableIcon,
   ThreeDMoveIcon,
+  ThreeDRotateIcon,
+  ThreeDScaleIcon,
 } from "@hugeicons/core-free-icons";
 
 import { useViewportStore } from "../../store/viewportStore";
@@ -16,8 +18,15 @@ import {
 } from "@/components/animate-ui/components/tooltip";
 
 export const Toolbar = () => {
-  const { showGrid, isEditorMode, toggleGrid, toggleEditorMode } =
-    useViewportStore();
+  const {
+    showGrid,
+    isEditorMode,
+    transformMode,
+    toggleGrid,
+    toggleEditorMode,
+    setTransformMode,
+    requestScreenshot,
+  } = useViewportStore();
 
   const tools = [
     {
@@ -29,8 +38,29 @@ export const Toolbar = () => {
     {
       icon: <Icon icon={ThreeDMoveIcon} className="h-5 w-5" />,
       label: "Move",
-      handleClick: () => toggleEditorMode(true),
-      isActive: isEditorMode,
+      handleClick: () => {
+        setTransformMode("translate");
+        toggleEditorMode(true);
+      },
+      isActive: isEditorMode && transformMode === "translate",
+    },
+    {
+      icon: <Icon icon={ThreeDRotateIcon} className="h-5 w-5" />,
+      label: "Rotate",
+      handleClick: () => {
+        setTransformMode("rotate");
+        toggleEditorMode(true);
+      },
+      isActive: isEditorMode && transformMode === "rotate",
+    },
+    {
+      icon: <Icon icon={ThreeDScaleIcon} className="h-5 w-5" />,
+      label: "Scale",
+      handleClick: () => {
+        setTransformMode("scale");
+        toggleEditorMode(true);
+      },
+      isActive: isEditorMode && transformMode === "scale",
     },
     {
       icon: <Icon icon={GridTableIcon} className="h-5 w-5" />,
@@ -41,7 +71,7 @@ export const Toolbar = () => {
     {
       icon: <Icon icon={Camera01Icon} className="h-5 w-5" />,
       label: "Screenshot",
-      handleClick: () => {},
+      handleClick: requestScreenshot,
       isActive: false,
     },
   ];

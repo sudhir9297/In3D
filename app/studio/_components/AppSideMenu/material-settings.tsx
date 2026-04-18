@@ -1,10 +1,12 @@
 "use client";
 
 import React from "react";
+import { Button } from "@/components/ui/button";
 import {
   useMaterialStore,
   MapProperties,
   MaterialMaps,
+  TextureMapInfo,
 } from "../../store/materialStore";
 import { useModelStore } from "../../store/modelStore";
 import {
@@ -12,33 +14,64 @@ import {
   updateMeshTexture,
   textureToDataURL,
 } from "../../utils/common";
+import {
+  clearManagedTextureCache,
+  createManagedTextureSource,
+  loadConfiguredTexture,
+  revokeBlobTextureUrl,
+} from "../../utils/textureManager";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Switch } from "@/components/ui/switch";
 import {
   ArrowDown01Icon,
+  ArrowReloadHorizontalIcon,
   ColorPickerIcon,
   GlobeIcon,
   Image01Icon,
   Upload01Icon,
   Cancel01Icon,
+  Settings02Icon,
 } from "@hugeicons/core-free-icons";
-import { TextureLoader } from "three";
+import {
+  ClampToEdgeWrapping,
+  MirroredRepeatWrapping,
+  RepeatWrapping,
+} from "three";
 import { Icon } from "@/components/ui/huge-icon";
 
-// Property categories for organization
-const propertyCategories = {
-  other: {
-    label: "Other",
-    properties: ["side"],
-  },
-  globalProperties: {
-    label: "Global Properties",
-    properties: ["repeatX", "repeatY", "rotation", "wrapS", "wrapT", "flipY"],
-  },
+const useRafThrottledCallback = <T,>(callback: (value: T) => void) => {
+  const frameRef = React.useRef<number | null>(null);
+  const latestRef = React.useRef<T | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, []);
+
+  return React.useCallback(
+    (value: T) => {
+      latestRef.current = value;
+      if (frameRef.current !== null) {
+        return;
+      }
+
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = null;
+        if (latestRef.current !== null) {
+          callback(latestRef.current);
+        }
+      });
+    },
+    [callback],
+  );
 };
 
 // Map Section Config
@@ -78,6 +111,70 @@ const mapSections: {
     properties: ["lightMapIntensity"],
   },
 ];
+
+const surfaceProperties: (keyof MapProperties)[] = [
+  "color",
+  "roughness",
+  "metalness",
+  "opacity",
+];
+
+const globalTransformProperties: (keyof MapProperties)[] = [
+  "repeatX",
+  "repeatY",
+  "rotation",
+  "wrapS",
+  "wrapT",
+  "flipY",
+];
+
+const advancedSections: Array<{
+  label: string;
+  properties: (keyof MapProperties)[];
+}> = [
+  {
+    label: "Normals",
+    properties: ["normalScaleX", "normalScaleY"],
+  },
+  {
+    label: "Occlusion",
+    properties: ["aoMapIntensity"],
+  },
+  {
+    label: "Emission",
+    properties: ["emissiveColor", "emissiveIntensity"],
+  },
+  {
+    label: "Displacement",
+    properties: ["displacementScale"],
+  },
+  {
+    label: "Bump",
+    properties: ["bumpScale"],
+  },
+  {
+    label: "Lighting",
+    properties: ["lightMapIntensity"],
+  },
+  {
+    label: "Material Options",
+    properties: ["transparent", "side"],
+  },
+];
+
+const getWrapModeValue = (wrap: string) => {
+  switch (wrap) {
+    case "ClampToEdge":
+      return ClampToEdgeWrapping;
+    case "MirroredRepeat":
+      return MirroredRepeatWrapping;
+    default:
+      return RepeatWrapping;
+  }
+};
+
+const getTextureSource = (mapInfo: TextureMapInfo) =>
+  mapInfo.map || mapInfo.thumbnail;
 
 // Property configurations
 const propertyConfig: Record<
@@ -186,14 +283,72 @@ const propertyConfig: Record<
 };
 
 export const MaterialSettings = () => {
-  const {
-    maps,
-    mapProperties,
-    selectedMesh,
-    setMapProperties,
-    setLocalMapProperties,
-  } = useMaterialStore();
+  const maps = useMaterialStore((state) => state.maps);
+  const mapProperties = useMaterialStore((state) => state.mapProperties);
+  const selectedMesh = useMaterialStore((state) => state.selectedMesh);
+  const initialMaps = useMaterialStore((state) => state.initialMaps);
+  const initialMapProperties = useMaterialStore(
+    (state) => state.initialMapProperties,
+  );
+  const setMapProperties = useMaterialStore((state) => state.setMapProperties);
+  const setLocalMapProperties = useMaterialStore(
+    (state) => state.setLocalMapProperties,
+  );
+  const resetMapState = useMaterialStore((state) => state.resetMapState);
+  const resetMaterialState = useMaterialStore(
+    (state) => state.resetMaterialState,
+  );
   const selectedObject = useModelStore((state) => state.selectedObject);
+  const canEditMaterial = Boolean(selectedMesh);
+
+  const applyTextureSnapshot = async (
+    mapKey: keyof MaterialMaps,
+    mapInfo: TextureMapInfo,
+    props: MapProperties,
+  ) => {
+    if (!selectedMesh) {
+      return;
+    }
+
+    if (!mapInfo.use) {
+      updateMeshTexture(selectedMesh, mapKey, null);
+      return;
+    }
+
+    const source = getTextureSource(mapInfo);
+    if (!source) {
+      return;
+    }
+
+    try {
+      const texture = await loadConfiguredTexture(
+        source,
+        mapInfo,
+        props,
+        getWrapModeValue,
+      );
+      updateMeshTexture(selectedMesh, mapKey, texture);
+    } catch (error) {
+      console.warn(`Failed to restore ${mapKey} texture`, error);
+      updateMeshTexture(selectedMesh, mapKey, null);
+    }
+  };
+
+  const applyMaterialSnapshot = async (
+    nextMaps: MaterialMaps,
+    nextProps: MapProperties,
+  ) => {
+    if (!selectedMesh) {
+      return;
+    }
+
+    applyMaterialProperties(selectedMesh, nextProps);
+    await Promise.all(
+      mapSections.map((section) =>
+        applyTextureSnapshot(section.key, nextMaps[section.key], nextProps),
+      ),
+    );
+  };
 
   // Handle property change
   const handlePropertyChange = (
@@ -222,6 +377,56 @@ export const MaterialSettings = () => {
     }
   };
 
+  const handleResetMap = async (
+    mapKey: keyof MaterialMaps,
+    properties: (keyof MapProperties)[],
+  ) => {
+    const initialMap = initialMaps[mapKey];
+    const currentMap = maps[mapKey];
+    if (
+      currentMap.map &&
+      currentMap.map !== initialMap.map &&
+      currentMap.map.startsWith("blob:")
+    ) {
+      revokeBlobTextureUrl(currentMap.map);
+      clearManagedTextureCache(currentMap.map);
+    }
+    resetMapState(mapKey);
+
+    const resetProps = Object.fromEntries(
+      properties.map((property) => [property, initialMapProperties[property]]),
+    ) as Partial<MapProperties>;
+    const nextProps = {
+      ...mapProperties,
+      ...resetProps,
+    };
+    setMapProperties(resetProps);
+
+    if (!selectedMesh) {
+      return;
+    }
+
+    applyMaterialProperties(selectedMesh, resetProps);
+    await applyTextureSnapshot(mapKey, initialMap, nextProps);
+  };
+
+  const handleResetMaterial = async () => {
+    mapSections.forEach((section) => {
+      const mapInfo = maps[section.key];
+      const initialMap = initialMaps[section.key];
+      if (
+        mapInfo.map &&
+        mapInfo.map !== initialMap?.map &&
+        mapInfo.map.startsWith("blob:")
+      ) {
+        revokeBlobTextureUrl(mapInfo.map);
+        clearManagedTextureCache(mapInfo.map);
+      }
+    });
+    resetMaterialState();
+    await applyMaterialSnapshot(initialMaps, initialMapProperties);
+  };
+
   if (!selectedObject) {
     return (
       <div className="p-4 text-center text-muted-foreground">
@@ -236,175 +441,244 @@ export const MaterialSettings = () => {
     "rotation",
     "wrapS",
     "wrapT",
-  ];
+  ] as const;
+
+  const activeLocalTransformMaps = mapSections.filter(
+    (section) => maps[section.key].use,
+  );
+
+  const renderPropertyRows = (
+    properties: readonly (keyof MapProperties)[],
+    onChange: (key: keyof MapProperties, value: MapProperties[keyof MapProperties]) => void,
+  ) =>
+    properties.map((propKey) => {
+      const config = propertyConfig[propKey];
+      if (!config) return null;
+
+      return (
+        <PropertyRow
+          key={propKey}
+          config={config}
+          value={mapProperties[propKey]}
+          onChange={(value) => onChange(propKey, value)}
+        />
+      );
+    });
 
   return (
-    <div className="space-y-3 px-2 overflow-y-auto flex-1 h-full min-h-0">
-      {/* Global Properties Section (Top) */}
-      <Collapsible defaultOpen>
+    <div className="space-y-2.5 px-2 overflow-y-auto flex-1 h-full min-h-0">
+      <div className="flex items-center justify-between px-2 pb-1">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Material Controls
+        </p>
+        <Button
+          variant="ghost"
+          size="xs"
+          onClick={() => void handleResetMaterial()}
+          disabled={!canEditMaterial}
+        >
+          <Icon icon={ArrowReloadHorizontalIcon} className="h-3.5 w-3.5" />
+          Reset Material
+        </Button>
+      </div>
+      <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
-            <Icon icon={GlobeIcon} className="h-4 w-4" />
-            <span className="font-medium text-sm">
-              {propertyCategories.globalProperties.label}
-            </span>
+            <Icon icon={ColorPickerIcon} className="h-4 w-4" />
+            <span className="font-medium text-sm">Surface</span>
           </div>
           <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="space-y-2 mt-2 px-2">
-            {propertyCategories.globalProperties.properties.map((propKey) => {
-              const config = propertyConfig[propKey];
-              if (!config) return null;
-              const value = mapProperties[propKey as keyof MapProperties];
-              return (
-                <PropertyRow
-                  key={propKey}
-                  config={config}
-                  value={value}
-                  onChange={(v) =>
-                    handlePropertyChange(propKey as keyof MapProperties, v)
-                  }
-                />
-              );
-            })}
-            <p className="text-[10px] text-muted-foreground italic mt-2 px-1 border-t pt-2">
-              Note: Global transforms do not affect the AO map.
+          <div className="mt-2 space-y-2 px-2">
+            {renderPropertyRows(surfaceProperties, handlePropertyChange)}
+            <p className="mt-2 border-t pt-2 px-1 text-[10px] italic text-muted-foreground">
+              Core finish controls live here so you can shape the material
+              before getting into texture-specific tuning.
             </p>
           </div>
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Map Sections */}
-      {mapSections.map((section) => {
-        const mapInfo = maps[section.key];
-        return (
-          <Collapsible key={section.key}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md group">
-              <div className="flex items-center gap-2 overflow-hidden">
-                <div
-                  className={cn(
-                    "w-5 h-5 rounded border bg-muted shrink-0 flex items-center justify-center overflow-hidden",
-                    mapInfo.use && "border-chart-2",
-                  )}
-                >
-                  {mapInfo.thumbnail ? (
-                    <img
-                      src={mapInfo.thumbnail}
-                      alt={`${section.label} texture preview`}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Icon icon={Image01Icon} className="h-3 w-3 opacity-30" />
-                  )}
-                </div>
-                <span
-                  className={cn(
-                    "font-medium text-sm truncate",
-                    mapInfo.use && "text-chart-2 font-semibold",
-                  )}
-                >
-                  {section.label}
-                </span>
-              </div>
-              <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="space-y-3 mt-2 px-2 pb-2">
-                <div className="w-32 aspect-square">
-                  <MapRow
-                    mapKey={section.key}
-                    label={section.label}
-                    thumbnail={mapInfo.thumbnail}
-                    map={mapInfo.map}
-                    isActive={mapInfo.use}
-                    hideLabel
-                  />
-                </div>
-
-                {/* Main section properties (Color, Roughness, etc) */}
-                {section.properties.length > 0 && (
-                  <div className="space-y-3 mt-1 pl-1">
-                    {section.properties.map((propKey) => {
-                      const config = propertyConfig[propKey];
-                      if (!config) return null;
-                      const value =
-                        mapProperties[propKey as keyof MapProperties];
-                      return (
-                        <PropertyRow
-                          key={propKey as string}
-                          config={config}
-                          value={value}
-                          onChange={(v) =>
-                            handlePropertyChange(
-                              propKey as keyof MapProperties,
-                              v,
-                            )
-                          }
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Local Transformation Properties (Repeat, Rotation, Wrap) */}
-                {mapInfo.use && (
-                  <div className="pt-3 border-t border-muted/50 mt-2 space-y-3 pl-1">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">
-                      Local Transforms
-                    </p>
-                    {localTransformProps.map((propKey) => {
-                      const config = propertyConfig[propKey];
-                      if (!config) return null;
-                      // Get from local map data
-                      const value = (mapInfo as any)[propKey];
-                      return (
-                        <PropertyRow
-                          key={`${section.key}-${propKey}`}
-                          config={config}
-                          value={value}
-                          onChange={(v) =>
-                            handleLocalPropertyChange(section.key, propKey, v)
-                          }
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        );
-      })}
-
-      {/* Other Section (Bottom) */}
       <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
-            <Icon icon={ColorPickerIcon} className="h-4 w-4" />
-            <span className="font-medium text-sm">
-              {propertyCategories.other.label}
-            </span>
+            <Icon icon={Image01Icon} className="h-4 w-4" />
+            <span className="font-medium text-sm">Textures</span>
           </div>
           <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="space-y-2 mt-2 px-2">
-            {propertyCategories.other.properties.map((propKey) => {
-              const config = propertyConfig[propKey];
-              if (!config) return null;
-              const value = mapProperties[propKey as keyof MapProperties];
+          <div className="mt-2 space-y-2 px-2 pb-2">
+            {mapSections.map((section) => {
+              const mapInfo = maps[section.key];
+
               return (
-                <PropertyRow
-                  key={propKey}
-                  config={config}
-                  value={value}
-                  onChange={(v) =>
-                    handlePropertyChange(propKey as keyof MapProperties, v)
-                  }
-                />
+                <Collapsible key={section.key}>
+                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-accent group">
+                    <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+                      <div
+                        className={cn(
+                          "flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted",
+                          mapInfo.use && "border-chart-2 bg-chart-2/10",
+                        )}
+                      >
+                        {mapInfo.thumbnail ? (
+                          <img
+                            src={mapInfo.thumbnail}
+                            alt={`${section.label} texture preview`}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Icon icon={Image01Icon} className="h-3 w-3 opacity-30" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <span
+                          className={cn(
+                            "block truncate text-sm font-medium",
+                            mapInfo.use && "font-semibold text-chart-2",
+                          )}
+                        >
+                          {section.label}
+                        </span>
+                      </div>
+                    </div>
+                    <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="mt-2 px-2 pb-2">
+                      <div className="w-28">
+                        <MapRow
+                          mapKey={section.key}
+                          label={section.label}
+                          thumbnail={mapInfo.thumbnail}
+                          map={mapInfo.map}
+                          isActive={mapInfo.use}
+                          canEdit={canEditMaterial}
+                          hideLabel
+                          onReset={() => void handleResetMap(section.key, section.properties)}
+                        />
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               );
             })}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
+          <div className="flex items-center gap-2">
+            <Icon icon={GlobeIcon} className="h-4 w-4" />
+            <span className="font-medium text-sm">Transforms</span>
+          </div>
+          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2 space-y-3 px-2 pb-2">
+            <div className="space-y-2">
+              <p className="px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                Global
+              </p>
+              {renderPropertyRows(globalTransformProperties, handlePropertyChange)}
+              <p className="border-t pt-2 px-1 text-[10px] italic text-muted-foreground">
+                Global transforms do not affect the AO map.
+              </p>
+            </div>
+
+            <div className="space-y-2.5 border-t border-border pt-3">
+              <p className="px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                Per-Map Overrides
+              </p>
+              {activeLocalTransformMaps.length > 0 ? (
+                activeLocalTransformMaps.map((section) => {
+                  const mapInfo = maps[section.key];
+                  return (
+                    <Collapsible key={`${section.key}-transforms`}>
+                      <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-accent">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              "flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted",
+                              mapInfo.use && "border-chart-2",
+                            )}
+                          >
+                            {mapInfo.thumbnail ? (
+                              <img
+                                src={mapInfo.thumbnail}
+                                alt={`${section.label} transform preview`}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Icon icon={Image01Icon} className="h-3 w-3 opacity-30" />
+                            )}
+                          </div>
+                          <span className="text-sm font-medium">
+                            {section.label}
+                          </span>
+                        </div>
+                        <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-2 space-y-2 px-2 pb-2">
+                          {localTransformProps.map((propKey) => {
+                            const config = propertyConfig[propKey];
+                            if (!config) return null;
+
+                            return (
+                              <PropertyRow
+                                key={`${section.key}-${propKey}`}
+                                config={config}
+                                value={mapInfo[propKey]}
+                                onChange={(value) =>
+                                  handleLocalPropertyChange(
+                                    section.key,
+                                    propKey,
+                                    value,
+                                  )
+                                }
+                              />
+                            );
+                          })}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })
+              ) : (
+                <p className="px-1 text-xs text-muted-foreground">
+                  Load a texture map to fine-tune its local tiling and rotation.
+                </p>
+              )}
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
+          <div className="flex items-center gap-2">
+            <Icon icon={Settings02Icon} className="h-4 w-4" />
+            <span className="font-medium text-sm">Advanced</span>
+          </div>
+          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2 space-y-3 px-2 pb-2">
+            {advancedSections.map((section) => (
+              <div
+                key={section.label}
+                className="space-y-2 border-b border-border/60 pb-2.5 last:border-b-0 last:pb-0"
+              >
+                <p className="px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  {section.label}
+                </p>
+                {renderPropertyRows(section.properties, handlePropertyChange)}
+              </div>
+            ))}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -416,23 +690,28 @@ export const MaterialSettings = () => {
 };
 
 // Map row component
-function MapRow({
+const MapRow = React.memo(function MapRow({
   mapKey,
   label,
   thumbnail,
   map,
   isActive,
+  canEdit,
   hideLabel,
+  onReset,
 }: {
   mapKey: keyof MaterialMaps;
   label: string;
   thumbnail: string;
   map: string;
   isActive: boolean;
+  canEdit: boolean;
   hideLabel?: boolean;
+  onReset: () => void;
 }) {
   const [error, setError] = React.useState(false);
-  const { setMaps, selectedMesh } = useMaterialStore();
+  const setMaps = useMaterialStore((state) => state.setMaps);
+  const selectedMesh = useMaterialStore((state) => state.selectedMesh);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Only attempt to show images that look like valid sources (Data URL, Blob URL, or HTTP)
@@ -451,39 +730,48 @@ function MapRow({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && selectedMesh) {
-      const url = URL.createObjectURL(file);
-      new TextureLoader().load(url, (texture) => {
+    if (!file || !selectedMesh) {
+      return;
+    }
+
+    const url = createManagedTextureSource(file);
+    const previousMap = map;
+
+    void loadConfiguredTexture(
+      url,
+      {
+        thumbnail: "",
+        map: url,
+        use: true,
+        repeatX: mapKey === "aoMap" ? 1 : 8,
+        repeatY: mapKey === "aoMap" ? 1 : 8,
+        rotation: useMaterialStore.getState().mapProperties.rotation,
+        wrapS: useMaterialStore.getState().mapProperties.wrapS,
+        wrapT: useMaterialStore.getState().mapProperties.wrapT,
+      },
+      { flipY: useMaterialStore.getState().mapProperties.flipY },
+      getWrapModeValue,
+    )
+      .then((texture) => {
         // Prevent race condition: only apply if the mesh is still selected
-        if (useMaterialStore.getState().selectedMesh !== selectedMesh) return;
+        if (useMaterialStore.getState().selectedMesh !== selectedMesh) {
+          texture.dispose();
+          revokeBlobTextureUrl(url);
+          return;
+        }
 
         // Apply existing properties to the new texture
         const props = useMaterialStore.getState().mapProperties;
 
         // Reset repeat to 8 as per user request whenever a new texture is applied
         const repeatVal = mapKey === "aoMap" ? 1 : 8;
-        texture.repeat.set(repeatVal, repeatVal);
-        texture.flipY = props.flipY;
-        texture.rotation = props.rotation;
-        // Map wrap modes
-        const wrapS =
-          props.wrapS === "Repeat"
-            ? 1000
-            : props.wrapS === "ClampToEdge"
-              ? 1001
-              : 1002;
-        const wrapT =
-          props.wrapT === "Repeat"
-            ? 1000
-            : props.wrapT === "ClampToEdge"
-              ? 1001
-              : 1002;
-        texture.wrapS = wrapS;
-        texture.wrapT = wrapT;
-
         updateMeshTexture(selectedMesh, mapKey, texture);
 
         const dataUrl = textureToDataURL(texture);
+        if (previousMap && previousMap !== url) {
+          revokeBlobTextureUrl(previousMap);
+          clearManagedTextureCache(previousMap);
+        }
         setMaps({
           [mapKey]: {
             thumbnail: dataUrl,
@@ -498,15 +786,21 @@ function MapRow({
         });
 
         setError(false);
+      })
+      .catch(() => {
+        revokeBlobTextureUrl(url);
+      })
+      .finally(() => {
         // Reset input value to allow selecting the same file again
         e.target.value = "";
       });
-    }
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (selectedMesh) {
+      revokeBlobTextureUrl(map);
+      clearManagedTextureCache(map);
       updateMeshTexture(selectedMesh, mapKey, null);
       setMaps({
         [mapKey]: {
@@ -526,9 +820,8 @@ function MapRow({
 
   return (
     <div
-      onClick={() => fileInputRef.current?.click()}
       className={cn(
-        "flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-all hover:bg-accent/50 group cursor-pointer relative",
+        "group relative rounded-md border p-1.5",
         isActive
           ? "border-chart-2/30 bg-chart-2/5"
           : "border-border bg-muted/30",
@@ -539,53 +832,76 @@ function MapRow({
         ref={fileInputRef}
         onChange={handleFileChange}
         className="hidden"
-        accept="image/*"
+        accept="image/*,.ktx2"
       />
 
-      <div
-        className={cn(
-          "w-full aspect-square rounded-md border flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative",
-          isActive
-            ? "bg-chart-2/20 border-chart-2/50"
-            : "bg-background border-border",
-        )}
-      >
-        {hasImage ? (
-          <img
-            src={imageSrc}
-            alt={label}
-            className="w-full h-full object-cover transition-transform group-hover:scale-110"
-            onError={() => setError(true)}
-          />
-        ) : (
-          <div className="flex flex-col items-center gap-1">
-            <Icon icon={Upload01Icon} className="h-4 w-4 text-muted-foreground/40" />
-            <span className="text-[8px] text-muted-foreground/40 uppercase font-bold tracking-wider">
-              Upload
-            </span>
-          </div>
-        )}
+      <div className="flex items-start gap-1.5">
+        <div
+          onClick={() => canEdit && fileInputRef.current?.click()}
+          className={cn(
+            "relative flex aspect-square flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-[6px] border shadow-sm",
+            isActive
+              ? "bg-chart-2/20 border-chart-2/50"
+              : "bg-background border-border",
+          )}
+        >
+          {hasImage ? (
+            <img
+              src={imageSrc}
+              alt={label}
+              className="h-full w-full object-cover transition-transform group-hover:scale-110"
+              onError={() => setError(true)}
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-1">
+              <Icon icon={Upload01Icon} className="h-4 w-4 text-muted-foreground/40" />
+              <span className="text-[8px] text-muted-foreground/40 uppercase font-bold tracking-wider">
+                Upload
+              </span>
+            </div>
+          )}
 
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <Icon icon={Upload01Icon} className="h-5 w-5 text-white" />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!canEdit}
+            className="absolute inset-0 flex items-center justify-center bg-black/28 opacity-0 transition-opacity group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-0"
+            title={isActive ? `Replace ${label}` : `Upload ${label}`}
+          >
+            <div className="flex items-center gap-1 rounded border border-white/30 bg-black/50 px-2 py-1 text-[9px] uppercase tracking-[0.16em] text-white">
+              <Icon icon={Upload01Icon} className="h-3.5 w-3.5" />
+              {isActive ? "Replace" : "Upload"}
+            </div>
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={onReset}
+            disabled={!canEdit}
+            title={`Reset ${label}`}
+          >
+            <Icon icon={ArrowReloadHorizontalIcon} className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={handleClear}
+            disabled={!canEdit || !isActive}
+            className="text-destructive hover:text-destructive"
+            title={`Remove ${label}`}
+          >
+            <Icon icon={Cancel01Icon} className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </div>
-
-      {isActive && (
-        <button
-          onClick={handleClear}
-          className="absolute top-1 right-1 p-1 bg-background/80 hover:bg-destructive hover:text-white rounded-full shadow-sm border border-border opacity-0 group-hover:opacity-100 transition-all z-10"
-          title="Clear texture"
-        >
-          <Icon icon={Cancel01Icon} className="h-3 w-3" />
-        </button>
-      )}
 
       {!hideLabel && (
         <span
           className={cn(
-            "text-[10px] text-center leading-tight font-medium line-clamp-2",
+            "mt-1 block text-[10px] text-center leading-tight font-medium line-clamp-2",
             isActive ? "text-chart-2" : "text-muted-foreground",
           )}
         >
@@ -594,10 +910,10 @@ function MapRow({
       )}
     </div>
   );
-}
+});
 
 // Property row component
-function PropertyRow({
+const PropertyRow = React.memo(function PropertyRow({
   config,
   value,
   onChange,
@@ -606,11 +922,13 @@ function PropertyRow({
   value: MapProperties[keyof MapProperties];
   onChange: (value: MapProperties[keyof MapProperties]) => void;
 }) {
+  const throttledChange = useRafThrottledCallback(onChange);
+
   if (config.type === "slider") {
     return (
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         <div className="flex items-center justify-between">
-          <label className="text-xs text-muted-foreground">
+          <label className="text-[11px] text-muted-foreground">
             {config.label}
           </label>
           <input
@@ -623,7 +941,7 @@ function PropertyRow({
             step={config.step}
             min={config.min}
             max={config.max}
-            className="w-16 h-5 text-[10px] text-right bg-muted/50 border-none outline-none focus:ring-1 focus:ring-chart-2 rounded px-1 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="h-5 w-14 rounded bg-muted/50 px-1 text-right font-mono text-[10px] outline-none [appearance:textfield] focus:ring-1 focus:ring-chart-2 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
         </div>
         <input
@@ -632,8 +950,8 @@ function PropertyRow({
           max={config.max}
           step={config.step}
           value={value as number}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
-          className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-chart-2 [&::-webkit-slider-thumb]:cursor-pointer hover:[&::-webkit-slider-thumb]:bg-chart-2/80"
+          onChange={(e) => throttledChange(parseFloat(e.target.value))}
+          className="h-1.5 w-full appearance-none rounded-full bg-muted cursor-pointer [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-chart-2 [&::-webkit-slider-thumb]:cursor-pointer hover:[&::-webkit-slider-thumb]:bg-chart-2/80"
         />
       </div>
     );
@@ -642,7 +960,7 @@ function PropertyRow({
   if (config.type === "color") {
     return (
       <div className="flex items-center justify-between">
-        <label className="text-xs text-muted-foreground">{config.label}</label>
+        <label className="text-[11px] text-muted-foreground">{config.label}</label>
         <div className="flex items-center gap-2">
           <input
             type="color"
@@ -650,7 +968,7 @@ function PropertyRow({
             onChange={(e) => onChange(e.target.value)}
             className="w-6 h-6 rounded border cursor-pointer"
           />
-          <span className="text-xs font-mono uppercase">
+          <span className="text-[11px] font-mono uppercase">
             {(value as string).slice(1)}
           </span>
         </div>
@@ -661,7 +979,7 @@ function PropertyRow({
   if (config.type === "select") {
     return (
       <div className="flex items-center justify-between">
-        <label className="text-xs text-muted-foreground">{config.label}</label>
+        <label className="text-[11px] text-muted-foreground">{config.label}</label>
         <select
           value={value as string | number}
           onChange={(e) => {
@@ -669,7 +987,7 @@ function PropertyRow({
             // Handle numeric options
             onChange(isNaN(Number(v)) ? v : Number(v));
           }}
-          className="text-xs bg-muted border rounded px-2 py-1 cursor-pointer"
+          className="cursor-pointer rounded border bg-muted px-2 py-1 text-[11px]"
         >
           {config.options?.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -684,27 +1002,11 @@ function PropertyRow({
   if (config.type === "toggle") {
     return (
       <div className="flex items-center justify-between py-1">
-        <label className="text-xs text-muted-foreground">{config.label}</label>
-        <button
-          onClick={() => onChange(!value)}
-          className={cn(
-            "group relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-chart-2 focus:ring-offset-2",
-            value ? "bg-chart-2" : "bg-muted-foreground/30",
-          )}
-        >
-          <span
-            aria-hidden="true"
-            className={cn(
-              "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-sm ring-0 transition duration-200 ease-in-out",
-              value ? "translate-x-4" : "translate-x-0",
-            )}
-          />
-        </button>
+        <label className="text-[11px] text-muted-foreground">{config.label}</label>
+        <Switch checked={Boolean(value)} onCheckedChange={onChange} />
       </div>
     );
   }
 
   return null;
-}
-
-export default MaterialSettings;
+});

@@ -49,13 +49,16 @@ export interface MapProperties {
   lightMapIntensity: number;
 }
 
-export interface MaterialStore {
+interface MaterialStore {
   // Current mesh reference
   selectedMesh: Object3D | null;
+  renderVersion: number;
 
   // Material data
   maps: MaterialMaps;
   mapProperties: MapProperties;
+  initialMaps: MaterialMaps;
+  initialMapProperties: MapProperties;
 
   // Actions
   setSelectedMesh: (mesh: Object3D | null) => void;
@@ -66,6 +69,8 @@ export interface MaterialStore {
   ) => void;
   setMapProperties: (props: Partial<MapProperties>) => void;
   setMaterial: (maps: MaterialMaps, props: MapProperties) => void;
+  resetMapState: (mapKey: keyof MaterialMaps) => void;
+  resetMaterialState: () => void;
   clearMaterial: () => void;
 }
 
@@ -119,14 +124,22 @@ const defaultMapProperties: MapProperties = {
 
 export const useMaterialStore = create<MaterialStore>((set) => ({
   selectedMesh: null,
+  renderVersion: 0,
   maps: { ...defaultMaps },
   mapProperties: { ...defaultMapProperties },
+  initialMaps: { ...defaultMaps },
+  initialMapProperties: { ...defaultMapProperties },
 
-  setSelectedMesh: (mesh) => set({ selectedMesh: mesh }),
+  setSelectedMesh: (mesh) =>
+    set((state) => ({
+      selectedMesh: mesh,
+      renderVersion: state.renderVersion + 1,
+    })),
 
   setMaps: (maps) =>
     set((state) => ({
       maps: { ...state.maps, ...maps },
+      renderVersion: state.renderVersion + 1,
     })),
 
   setLocalMapProperties: (mapKey, props) =>
@@ -135,6 +148,7 @@ export const useMaterialStore = create<MaterialStore>((set) => ({
         ...state.maps,
         [mapKey]: { ...state.maps[mapKey], ...props },
       },
+      renderVersion: state.renderVersion + 1,
     })),
 
   setMapProperties: (props) =>
@@ -165,24 +179,53 @@ export const useMaterialStore = create<MaterialStore>((set) => ({
             ...props,
           };
         });
-        return { mapProperties: newMapProperties, maps: newMaps };
+        return {
+          mapProperties: newMapProperties,
+          maps: newMaps,
+          renderVersion: state.renderVersion + 1,
+        };
       }
 
-      return { mapProperties: newMapProperties };
+      return {
+        mapProperties: newMapProperties,
+        renderVersion: state.renderVersion + 1,
+      };
     }),
 
   setMaterial: (maps, props) =>
-    set({
+    set((state) => ({
       maps,
       mapProperties: props,
-    }),
+      initialMaps: maps,
+      initialMapProperties: props,
+      renderVersion: state.renderVersion + 1,
+    })),
+
+  resetMapState: (mapKey) =>
+    set((state) => ({
+      maps: {
+        ...state.maps,
+        [mapKey]: { ...state.initialMaps[mapKey] },
+      },
+      renderVersion: state.renderVersion + 1,
+    })),
+
+  resetMaterialState: () =>
+    set((state) => ({
+      maps: { ...state.initialMaps },
+      mapProperties: { ...state.initialMapProperties },
+      renderVersion: state.renderVersion + 1,
+    })),
 
   clearMaterial: () =>
-    set({
+    set((state) => ({
       selectedMesh: null,
       maps: { ...defaultMaps },
       mapProperties: { ...defaultMapProperties },
-    }),
+      initialMaps: { ...defaultMaps },
+      initialMapProperties: { ...defaultMapProperties },
+      renderVersion: state.renderVersion + 1,
+    })),
 }));
 
 // Export defaults for use in extraction

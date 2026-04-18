@@ -9,13 +9,70 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Icon } from "@/components/ui/huge-icon";
-import { usePostprocessingStore } from "../../store/postprocessingStore";
+import { Switch } from "@/components/ui/switch";
+import {
+  QualityPreset,
+  usePostprocessingStore,
+} from "../../store/postprocessingStore";
 import {
   ArrowDown01Icon,
   ColorsIcon,
   MirrorIcon,
+  Settings02Icon,
   SparklesIcon,
 } from "@hugeicons/core-free-icons";
+
+const QUALITY_PRESET_OPTIONS: Array<{
+  value: QualityPreset;
+  label: string;
+  helper: string;
+}> = [
+  {
+    value: "performance",
+    label: "Performance",
+    helper: "Minimal GI and smaller shadows for weak GPUs.",
+  },
+  {
+    value: "balanced",
+    label: "Balanced",
+    helper: "Keeps reflections while easing off the heaviest passes.",
+  },
+  {
+    value: "high",
+    label: "High",
+    helper: "Full-quality reflections, GI, and larger shadows.",
+  },
+];
+
+function useRafThrottledNumber(callback: (value: number) => void) {
+  const frameRef = React.useRef<number | null>(null);
+  const latestValueRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, []);
+
+  return React.useCallback(
+    (value: number) => {
+      latestValueRef.current = value;
+      if (frameRef.current !== null) {
+        return;
+      }
+
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = null;
+        if (latestValueRef.current !== null) {
+          callback(latestValueRef.current);
+        }
+      });
+    },
+    [callback],
+  );
+}
 
 function EffectToggle({
   label,
@@ -27,7 +84,7 @@ function EffectToggle({
   onClick: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between border border-border px-3 py-2">
+    <div className="flex items-center justify-between px-1 py-1">
       <span className="text-sm">{label}</span>
       <Button
         variant={enabled ? "secondary" : "ghost"}
@@ -58,6 +115,8 @@ function PropertySlider({
   valueDisplay: string;
   onValueChange: (value: number) => void;
 }) {
+  const throttledValueChange = useRafThrottledNumber(onValueChange);
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
@@ -74,7 +133,9 @@ function PropertySlider({
         min={min}
         max={max}
         step={step}
-        onChange={(event) => onValueChange(parseFloat(event.target.value))}
+        onChange={(event) =>
+          throttledValueChange(parseFloat(event.target.value))
+        }
         className="h-1 w-full cursor-pointer appearance-none rounded-full bg-muted [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-chart-2"
       />
     </div>
@@ -82,6 +143,12 @@ function PropertySlider({
 }
 
 export const PostprocessingSettings = () => {
+  const qualityPreset = usePostprocessingStore((state) => state.qualityPreset);
+  const autoQuality = usePostprocessingStore((state) => state.autoQuality);
+  const setQualityPreset = usePostprocessingStore(
+    (state) => state.setQualityPreset,
+  );
+  const setAutoQuality = usePostprocessingStore((state) => state.setAutoQuality);
   const bloom = usePostprocessingStore((state) => state.bloom);
   const ssr = usePostprocessingStore((state) => state.ssr);
   const ssgi = usePostprocessingStore((state) => state.ssgi);
@@ -91,7 +158,65 @@ export const PostprocessingSettings = () => {
 
   return (
     <div className="space-y-3 px-2 flex-1 h-full min-h-0 overflow-y-auto">
-      <Collapsible defaultOpen>
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
+          <div className="flex items-center gap-2">
+            <Icon icon={Settings02Icon} className="h-4 w-4" />
+            <span className="font-medium text-sm">Render Quality</span>
+          </div>
+          <Icon
+            icon={ArrowDown01Icon}
+            className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180"
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-2 space-y-3 px-2 pb-2">
+            <div className="flex items-center justify-between rounded-md border border-border/60 px-2 py-2">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-foreground">
+                  Auto Adapt
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Let the viewport step quality up or down based on frame stability.
+                </p>
+              </div>
+              <Switch checked={autoQuality} onCheckedChange={setAutoQuality} />
+            </div>
+
+            <div className="grid gap-2">
+              {QUALITY_PRESET_OPTIONS.map((option) => {
+                const isActive = qualityPreset === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setQualityPreset(option.value)}
+                    className={`rounded-md border px-3 py-2 text-left transition-colors ${
+                      isActive
+                        ? "border-chart-2/60 bg-chart-2/8"
+                        : "border-border/60 hover:bg-accent"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{option.label}</span>
+                      {isActive ? (
+                        <span className="text-[10px] uppercase tracking-[0.16em] text-chart-2">
+                          Active
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {option.helper}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={SparklesIcon} className="h-4 w-4" />
@@ -105,7 +230,7 @@ export const PostprocessingSettings = () => {
         <CollapsibleContent>
           <div className="space-y-3 mt-2 px-2 pb-2">
             <EffectToggle
-              label="Bloom"
+              label="Enable"
               enabled={bloom.enabled}
               onClick={() => setBloom({ enabled: !bloom.enabled })}
             />
@@ -140,7 +265,7 @@ export const PostprocessingSettings = () => {
         </CollapsibleContent>
       </Collapsible>
 
-      <Collapsible defaultOpen>
+      <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={MirrorIcon} className="h-4 w-4" />
@@ -154,7 +279,7 @@ export const PostprocessingSettings = () => {
         <CollapsibleContent>
           <div className="space-y-3 mt-2 px-2 pb-2">
             <EffectToggle
-              label="SSR"
+              label="Enable"
               enabled={ssr.enabled}
               onClick={() => setSsr({ enabled: !ssr.enabled })}
             />
@@ -189,7 +314,7 @@ export const PostprocessingSettings = () => {
         </CollapsibleContent>
       </Collapsible>
 
-      <Collapsible defaultOpen>
+      <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={ColorsIcon} className="h-4 w-4" />
@@ -203,7 +328,7 @@ export const PostprocessingSettings = () => {
         <CollapsibleContent>
           <div className="space-y-3 mt-2 px-2 pb-2">
             <EffectToggle
-              label="SSGI"
+              label="Enable"
               enabled={ssgi.enabled}
               onClick={() => setSsgi({ enabled: !ssgi.enabled })}
             />
