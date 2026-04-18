@@ -134,11 +134,10 @@ function ToggleGroup({
   );
 }
 
-type ToggleGroupItemProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+type ToggleGroupItemProps = Omit<HTMLMotionProps<"button">, "value"> &
   Omit<VariantProps<typeof toggleVariants>, "type"> & {
     value: ToggleValue;
     children?: React.ReactNode;
-    buttonProps?: HTMLMotionProps<"button">;
     spanProps?: React.ComponentProps<"span">;
   };
 
@@ -149,7 +148,6 @@ const ToggleGroupItem = React.forwardRef<HTMLButtonElement, ToggleGroupItemProps
       children,
       variant,
       size,
-      buttonProps,
       spanProps,
       value,
       onClick,
@@ -179,7 +177,6 @@ const ToggleGroupItem = React.forwardRef<HTMLButtonElement, ToggleGroupItemProps
         aria-pressed={isActive}
         initial={{ scale: 1 }}
         whileTap={{ scale: 0.94 }}
-        {...buttonProps}
         {...props}
         onClick={(event) => {
           onClick?.(event);
@@ -187,7 +184,7 @@ const ToggleGroupItem = React.forwardRef<HTMLButtonElement, ToggleGroupItemProps
             toggleValue(value);
           }
         }}
-        className={cn("relative w-full", buttonProps?.className)}
+        className="relative w-full"
       >
         <span
           {...spanProps}

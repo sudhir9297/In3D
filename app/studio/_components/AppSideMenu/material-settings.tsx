@@ -20,28 +20,13 @@ import {
 } from "@/components/ui/collapsible";
 import {
   ChevronDown,
-  Image,
+  Image as ImageIcon,
   Palette,
-  Settings2,
   X,
   Upload,
   Globe,
 } from "lucide-react";
 import { TextureLoader } from "three";
-
-// Map display names
-const mapDisplayNames: Record<keyof MaterialMaps, string> = {
-  albedoMap: "Albedo (Diffuse)",
-  metalnessMap: "Metalness",
-  roughnessMap: "Roughness",
-  normalMap: "Normal",
-  displacementMap: "Displacement",
-  aoMap: "Ambient Occlusion",
-  emissiveMap: "Emissive",
-  bumpMap: "Bump",
-  alphaMap: "Alpha",
-  lightMap: "Light Map",
-};
 
 // Property categories for organization
 const propertyCategories = {
@@ -274,7 +259,6 @@ export const MaterialSettings = () => {
               return (
                 <PropertyRow
                   key={propKey}
-                  propKey={propKey}
                   config={config}
                   value={value}
                   onChange={(v) =>
@@ -306,10 +290,11 @@ export const MaterialSettings = () => {
                   {mapInfo.thumbnail ? (
                     <img
                       src={mapInfo.thumbnail}
+                      alt={`${section.label} texture preview`}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <Image className="w-3 h-3 opacity-30" />
+                    <ImageIcon className="w-3 h-3 opacity-30" />
                   )}
                 </div>
                 <span
@@ -328,7 +313,7 @@ export const MaterialSettings = () => {
                 <div className="w-32 aspect-square">
                   <MapRow
                     mapKey={section.key}
-                    label={""} // Label is now in collapse header
+                    label={section.label}
                     thumbnail={mapInfo.thumbnail}
                     map={mapInfo.map}
                     isActive={mapInfo.use}
@@ -347,7 +332,6 @@ export const MaterialSettings = () => {
                       return (
                         <PropertyRow
                           key={propKey as string}
-                          propKey={propKey as string}
                           config={config}
                           value={value}
                           onChange={(v) =>
@@ -376,7 +360,6 @@ export const MaterialSettings = () => {
                       return (
                         <PropertyRow
                           key={`${section.key}-${propKey}`}
-                          propKey={propKey}
                           config={config}
                           value={value}
                           onChange={(v) =>
@@ -413,7 +396,6 @@ export const MaterialSettings = () => {
               return (
                 <PropertyRow
                   key={propKey}
-                  propKey={propKey}
                   config={config}
                   value={value}
                   onChange={(v) =>
@@ -449,7 +431,7 @@ function MapRow({
   hideLabel?: boolean;
 }) {
   const [error, setError] = React.useState(false);
-  const { setMaps, setMapProperties, selectedMesh } = useMaterialStore();
+  const { setMaps, selectedMesh } = useMaterialStore();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Only attempt to show images that look like valid sources (Data URL, Blob URL, or HTTP)
@@ -615,12 +597,10 @@ function MapRow({
 
 // Property row component
 function PropertyRow({
-  propKey,
   config,
   value,
   onChange,
 }: {
-  propKey: string;
   config: (typeof propertyConfig)[string];
   value: MapProperties[keyof MapProperties];
   onChange: (value: MapProperties[keyof MapProperties]) => void;

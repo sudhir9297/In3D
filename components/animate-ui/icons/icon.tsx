@@ -4,7 +4,6 @@ import * as React from 'react';
 import {
   SVGMotionProps,
   useAnimation,
-  type AnimationControls,
   type Variants,
 } from 'motion/react';
 
@@ -41,7 +40,7 @@ type StaticAnimations = keyof typeof staticAnimations;
 type TriggerProp<T = string> = boolean | StaticAnimations | T;
 
 interface AnimateIconContextValue {
-  controls: AnimationControls | undefined;
+  controls: ReturnType<typeof useAnimation> | undefined;
   animation: StaticAnimations | string;
   loop: boolean;
   loopDelay: number;
@@ -62,9 +61,15 @@ interface DefaultIconProps<T = string> {
   onAnimateEnd?: () => void;
 }
 
+type AnimateIconChildProps = {
+  onMouseEnter?: (event: React.MouseEvent<SVGSVGElement>) => void;
+  onMouseLeave?: (event: React.MouseEvent<SVGSVGElement>) => void;
+  onPointerDown?: (event: React.PointerEvent<SVGSVGElement>) => void;
+  onPointerUp?: (event: React.PointerEvent<SVGSVGElement>) => void;
+};
+
 interface AnimateIconProps<T = string> extends DefaultIconProps<T> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  children: React.ReactElement<any, any>;
+  children: React.ReactElement<AnimateIconChildProps>;
 }
 
 interface IconProps<T>
@@ -109,54 +114,64 @@ function AnimateIcon({
   children,
 }: AnimateIconProps) {
   const controls = useAnimation();
-  const [localAnimate, setLocalAnimate] = React.useState(!!animate);
-  const currentAnimation = React.useRef(animation);
+  const isControlled = animate !== undefined;
+  const initialAnimation = typeof animate === 'string' ? animate : animation;
+  const [internalAnimate, setInternalAnimate] = React.useState(Boolean(animate));
+  const [internalAnimation, setInternalAnimation] =
+    React.useState<StaticAnimations | string>(initialAnimation);
+  const resolvedAnimate = isControlled ? Boolean(animate) : internalAnimate;
+  const resolvedAnimation = isControlled ? initialAnimation : internalAnimation;
 
   const startAnimation = React.useCallback(
     (trigger: TriggerProp) => {
-      currentAnimation.current =
+      const nextAnimation =
         typeof trigger === 'string' ? trigger : animation;
-      setLocalAnimate(true);
+
+      if (isControlled) {
+        onAnimateChange?.(true, nextAnimation);
+        return;
+      }
+
+      setInternalAnimation(nextAnimation);
+      setInternalAnimate(true);
     },
-    [animation],
+    [animation, isControlled, onAnimateChange],
   );
 
   const stopAnimation = React.useCallback(() => {
-    setLocalAnimate(false);
-  }, []);
+    if (isControlled) {
+      onAnimateChange?.(false, resolvedAnimation);
+      return;
+    }
 
-  React.useEffect(() => {
-    currentAnimation.current =
-      typeof animate === 'string' ? animate : animation;
-    setLocalAnimate(!!animate);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animate]);
+    setInternalAnimate(false);
+  }, [isControlled, onAnimateChange, resolvedAnimation]);
 
   React.useEffect(
-    () => onAnimateChange?.(localAnimate, currentAnimation.current),
-    [localAnimate, onAnimateChange],
+    () => onAnimateChange?.(resolvedAnimate, resolvedAnimation),
+    [resolvedAnimate, resolvedAnimation, onAnimateChange],
   );
 
   React.useEffect(() => {
-    if (localAnimate) onAnimateStart?.();
-    controls.start(localAnimate ? 'animate' : 'initial').then(() => {
-      if (localAnimate) onAnimateEnd?.();
+    if (resolvedAnimate) onAnimateStart?.();
+    controls.start(resolvedAnimate ? 'animate' : 'initial').then(() => {
+      if (resolvedAnimate) onAnimateEnd?.();
     });
-  }, [localAnimate, controls, onAnimateStart, onAnimateEnd]);
+  }, [resolvedAnimate, controls, onAnimateStart, onAnimateEnd]);
 
-  const handleMouseEnter = (e: MouseEvent) => {
+  const handleMouseEnter = (e: React.MouseEvent<SVGSVGElement>) => {
     if (animateOnHover) startAnimation(animateOnHover);
     children.props?.onMouseEnter?.(e);
   };
-  const handleMouseLeave = (e: MouseEvent) => {
+  const handleMouseLeave = (e: React.MouseEvent<SVGSVGElement>) => {
     if (animateOnHover || animateOnTap) stopAnimation();
     children.props?.onMouseLeave?.(e);
   };
-  const handlePointerDown = (e: PointerEvent) => {
+  const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (animateOnTap) startAnimation(animateOnTap);
     children.props?.onPointerDown?.(e);
   };
-  const handlePointerUp = (e: PointerEvent) => {
+  const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
     if (animateOnTap) stopAnimation();
     children.props?.onPointerUp?.(e);
   };
@@ -173,7 +188,7 @@ function AnimateIcon({
     <AnimateIconContext.Provider
       value={{
         controls,
-        animation: currentAnimation.current,
+        animation: resolvedAnimation,
         loop,
         loopDelay,
       }}
@@ -281,11 +296,10 @@ function IconWrapper<T extends string>({
   );
 }
 
-function getVariants<
+function useIconVariants<
   V extends { default: T; [key: string]: T },
   T extends Record<string, Variants>,
 >(animations: V): T {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const { animation: animationType, loop, loopDelay } = useAnimateIconContext();
 
   let result: T;
@@ -307,8 +321,11 @@ function getVariants<
 
   if (loop) {
     for (const key in result) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const state = result[key] as any;
+      const state = result[key] as {
+        animate?: {
+          transition?: Record<string, unknown>;
+        };
+      };
       const transition = state.animate?.transition;
       if (!transition) continue;
 
@@ -331,7 +348,7 @@ function getVariants<
             };
           }
         }
-      } else {
+      } else if (state.animate) {
         state.animate.transition = {
           ...transition,
           repeat: Infinity,
@@ -351,7 +368,7 @@ export {
   AnimateIcon,
   IconWrapper,
   useAnimateIconContext,
-  getVariants,
+  useIconVariants,
   type IconProps,
   type IconWrapperProps,
   type AnimateIconProps,

@@ -4,7 +4,7 @@ import * as React from 'react';
 import { motion, type Variants } from 'motion/react';
 
 import {
-  getVariants,
+  useIconVariants,
   useAnimateIconContext,
   IconWrapper,
   type IconProps,
@@ -30,7 +30,7 @@ const animations = {
 
 function IconComponent({ size, ...props }: PanelRightProps) {
   const { controls } = useAnimateIconContext();
-  const variants = getVariants(animations);
+  const variants = useIconVariants(animations);
 
   return (
     <motion.svg
