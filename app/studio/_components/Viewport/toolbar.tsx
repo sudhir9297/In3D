@@ -1,9 +1,13 @@
-import { Camera, Grid3X3 } from "lucide-react";
-import { Move3D } from "lucide-react";
-import { MousePointerClick } from "lucide-react";
+import {
+  Camera01Icon,
+  Cursor02Icon,
+  GridTableIcon,
+  ThreeDMoveIcon,
+} from "@hugeicons/core-free-icons";
 
 import { useViewportStore } from "../../store/viewportStore";
 import { cn } from "@/lib/utils";
+import { Icon } from "@/components/ui/huge-icon";
 import {
   Tooltip,
   TooltipContent,
@@ -17,25 +21,25 @@ export const Toolbar = () => {
 
   const tools = [
     {
-      icon: <MousePointerClick className="w-5 h-5" strokeWidth={1.5} />,
+      icon: <Icon icon={Cursor02Icon} className="h-5 w-5" />,
       label: "Select",
       handleClick: () => toggleEditorMode(false),
       isActive: !isEditorMode,
     },
     {
-      icon: <Move3D className="w-5 h-5" strokeWidth={1.5} />,
+      icon: <Icon icon={ThreeDMoveIcon} className="h-5 w-5" />,
       label: "Move",
       handleClick: () => toggleEditorMode(true),
       isActive: isEditorMode,
     },
     {
-      icon: <Grid3X3 className="w-5 h-5" strokeWidth={1.5} />,
+      icon: <Icon icon={GridTableIcon} className="h-5 w-5" />,
       label: "Grid",
       handleClick: () => toggleGrid(),
       isActive: showGrid,
     },
     {
-      icon: <Camera className="w-5 h-5" strokeWidth={1.5} />,
+      icon: <Icon icon={Camera01Icon} className="h-5 w-5" />,
       label: "Screenshot",
       handleClick: () => {},
       isActive: false,
@@ -43,9 +47,9 @@ export const Toolbar = () => {
   ];
 
   return (
-    <div className="absolute z-50 -right-14 top-16 border px-1 py-1.5 rounded-lg bg-background shadow-md">
+    <div className="studio-panel absolute left-4 top-4 z-50 w-12 overflow-hidden bg-card/94 shadow-[0_12px_40px_rgba(0,0,0,0.08)] backdrop-blur-sm">
       <TooltipProvider openDelay={400}>
-        <div className="flex flex-col  ">
+        <div className="flex flex-col">
           {tools.map((tool) => (
             <ToolTopItem key={tool.label} {...tool} />
           ))}
@@ -71,8 +75,8 @@ const ToolTopItem = ({
       <TooltipTrigger>
         <div
           className={cn(
-            isActive && "text-chart-2",
-            "flex items-center justify-center w-full h-full  cursor-pointer border-b last:border-b-0 p-2"
+            isActive && "bg-background text-foreground",
+            "flex h-12 w-12 items-center justify-center border-b border-border last:border-b-0 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
           )}
           aria-label={label}
           title={label}

@@ -2,15 +2,15 @@ import React, { useState } from "react";
 import { useModelStore } from "../../store/modelStore";
 import { Material, Mesh, Object3D, Group } from "three";
 import {
-  ChevronDown,
-  ChevronRight,
-  Folder,
-  Layers,
-  Palette,
-  Circle,
-  FolderOpen,
-  CircleDashed,
-} from "lucide-react";
+  ArrowDown01Icon,
+  ArrowRight01Icon,
+  BoundingBoxIcon,
+  CircleIcon,
+  ColorPickerIcon,
+  Folder01Icon,
+  FolderOpenIcon,
+  Layers01Icon,
+} from "@hugeicons/core-free-icons";
 
 import {
   ToggleGroup,
@@ -18,6 +18,7 @@ import {
 } from "@/components/animate-ui/base/toggle-group";
 
 import { AnimatePresence } from "motion/react";
+import { Icon } from "@/components/ui/huge-icon";
 
 const SceneGraph = () => {
   const { objects, selectedObject, setSelectedObject } = useModelStore();
@@ -101,9 +102,9 @@ function SceneNode({
       return (
         <AnimatePresence mode="wait">
           {isOpen && isOpen ? (
-            <FolderOpen className="w-4 h-4" />
+            <Icon icon={FolderOpenIcon} className="h-4 w-4" />
           ) : (
-            <Folder className="w-4 h-4" />
+            <Icon icon={Folder01Icon} className="h-4 w-4" />
           )}
         </AnimatePresence>
       );
@@ -112,15 +113,17 @@ function SceneNode({
       return (
         <AnimatePresence mode="wait">
           {isActive ? (
-            <CircleDashed className="w-4 h-4" />
+            <Icon icon={BoundingBoxIcon} className="h-4 w-4" />
           ) : (
-            <Circle className="w-4 h-4" />
+            <Icon icon={CircleIcon} className="h-4 w-4" />
           )}
         </AnimatePresence>
       );
 
-    if (object instanceof Material) return <Palette className="w-4 h-4 " />;
-    return <Layers className="w-4 h-4 " />;
+    if (object instanceof Material) {
+      return <Icon icon={ColorPickerIcon} className="h-4 w-4" />;
+    }
+    return <Icon icon={Layers01Icon} className="h-4 w-4" />;
   };
 
   return (
@@ -166,9 +169,9 @@ function SceneNode({
             aria-label={expanded ? "Collapse" : "Expand"}
           >
             {expanded ? (
-              <ChevronDown size={16} strokeWidth={1.5} />
+              <Icon icon={ArrowDown01Icon} size={16} />
             ) : (
-              <ChevronRight size={16} strokeWidth={1.5} />
+              <Icon icon={ArrowRight01Icon} size={16} />
             )}
           </div>
 

@@ -9,14 +9,15 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-  ChevronDown,
-  Sparkles,
-  Layers,
-  Camera,
-  Palette,
-  Eye,
-} from "lucide-react";
+  ArrowDown01Icon,
+  Camera01Icon,
+  ColorPickerIcon,
+  Layers01Icon,
+  SparklesIcon,
+  ViewIcon,
+} from "@hugeicons/core-free-icons";
 import { Switch } from "@/components/ui/switch";
+import { Icon } from "@/components/ui/huge-icon";
 
 export const PostprocessingSettings = () => {
   const {
@@ -33,14 +34,14 @@ export const PostprocessingSettings = () => {
   } = usePostprocessingStore();
 
   return (
-    <div className="space-y-3 p-2 overflow-y-auto flex-1 h-full min-h-0">
+    <div className="space-y-3 px-2 overflow-y-auto flex-1 h-full min-h-0">
       {/* Bloom Section */}
       <Collapsible defaultOpen>
         <div className="flex items-center justify-between px-2 py-1">
           <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1 text-left">
-            <Sparkles className="w-4 h-4 text-yellow-500/80" />
+            <Icon icon={SparklesIcon} className="h-4 w-4 text-yellow-500/80" />
             <span className="font-medium text-sm">Bloom</span>
-            <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+            <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
           </CollapsibleTrigger>
           <Switch
             checked={bloom.enabled}
@@ -86,9 +87,9 @@ export const PostprocessingSettings = () => {
       <Collapsible>
         <div className="flex items-center justify-between px-2 py-2">
           <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1 text-left">
-            <Layers className="w-4 h-4 text-blue-500/80" />
+            <Icon icon={Layers01Icon} className="h-4 w-4 text-blue-500/80" />
             <span className="font-medium text-sm">Ambient Occlusion</span>
-            <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+            <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
           </CollapsibleTrigger>
           <Switch
             checked={ssao.enabled}
@@ -126,10 +127,10 @@ export const PostprocessingSettings = () => {
       <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md group">
           <div className="flex items-center gap-2">
-            <Camera className="w-4 h-4 text-purple-500/80" />
+            <Icon icon={Camera01Icon} className="h-4 w-4 text-purple-500/80" />
             <span className="font-medium text-sm">Camera Effects</span>
           </div>
-          <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-6 mt-4 px-2 pb-2">
@@ -209,9 +210,9 @@ export const PostprocessingSettings = () => {
       <Collapsible>
         <div className="flex items-center justify-between px-2 py-2">
           <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1 text-left">
-            <Palette className="w-4 h-4 text-emerald-500/80" />
+            <Icon icon={ColorPickerIcon} className="h-4 w-4 text-emerald-500/80" />
             <span className="font-medium text-sm">Color Correction</span>
-            <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+            <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
           </CollapsibleTrigger>
           <Switch
             checked={colorCorrection.enabled}
@@ -249,7 +250,7 @@ export const PostprocessingSettings = () => {
 
       {/* Performance Switch placeholder/Coming Soon */}
       <div className="flex items-center gap-2 px-3 py-2 mt-4 rounded-lg bg-accent/30 opacity-60">
-        <Eye className="w-3.5 h-3.5" />
+        <Icon icon={ViewIcon} className="h-3.5 w-3.5" />
         <span className="text-[10px] font-medium italic">
           Settings are applied globally
         </span>

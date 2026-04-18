@@ -19,14 +19,15 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-  ChevronDown,
-  Image as ImageIcon,
-  Palette,
-  X,
-  Upload,
-  Globe,
-} from "lucide-react";
+  ArrowDown01Icon,
+  ColorPickerIcon,
+  GlobeIcon,
+  Image01Icon,
+  Upload01Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons";
 import { TextureLoader } from "three";
+import { Icon } from "@/components/ui/huge-icon";
 
 // Property categories for organization
 const propertyCategories = {
@@ -238,17 +239,17 @@ export const MaterialSettings = () => {
   ];
 
   return (
-    <div className="space-y-3 p-2 overflow-y-auto flex-1 h-full min-h-0">
+    <div className="space-y-3 px-2 overflow-y-auto flex-1 h-full min-h-0">
       {/* Global Properties Section (Top) */}
       <Collapsible defaultOpen>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4" />
+            <Icon icon={GlobeIcon} className="h-4 w-4" />
             <span className="font-medium text-sm">
               {propertyCategories.globalProperties.label}
             </span>
           </div>
-          <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-2 mt-2 px-2">
@@ -294,7 +295,7 @@ export const MaterialSettings = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <ImageIcon className="w-3 h-3 opacity-30" />
+                    <Icon icon={Image01Icon} className="h-3 w-3 opacity-30" />
                   )}
                 </div>
                 <span
@@ -306,7 +307,7 @@ export const MaterialSettings = () => {
                   {section.label}
                 </span>
               </div>
-              <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+              <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="space-y-3 mt-2 px-2 pb-2">
@@ -380,12 +381,12 @@ export const MaterialSettings = () => {
       <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
-            <Palette className="w-4 h-4" />
+            <Icon icon={ColorPickerIcon} className="h-4 w-4" />
             <span className="font-medium text-sm">
               {propertyCategories.other.label}
             </span>
           </div>
-          <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-2 mt-2 px-2">
@@ -558,7 +559,7 @@ function MapRow({
           />
         ) : (
           <div className="flex flex-col items-center gap-1">
-            <Upload className="w-4 h-4 text-muted-foreground/40" />
+            <Icon icon={Upload01Icon} className="h-4 w-4 text-muted-foreground/40" />
             <span className="text-[8px] text-muted-foreground/40 uppercase font-bold tracking-wider">
               Upload
             </span>
@@ -567,7 +568,7 @@ function MapRow({
 
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <Upload className="w-5 h-5 text-white" />
+          <Icon icon={Upload01Icon} className="h-5 w-5 text-white" />
         </div>
       </div>
 
@@ -577,7 +578,7 @@ function MapRow({
           className="absolute top-1 right-1 p-1 bg-background/80 hover:bg-destructive hover:text-white rounded-full shadow-sm border border-border opacity-0 group-hover:opacity-100 transition-all z-10"
           title="Clear texture"
         >
-          <X className="w-3 h-3" />
+          <Icon icon={Cancel01Icon} className="h-3 w-3" />
         </button>
       )}
 

@@ -1,7 +1,8 @@
 "use client";
-import { Moon, Sun } from "lucide-react";
+import { Moon01Icon, Sun01Icon } from "@hugeicons/core-free-icons";
 import { useTheme } from "next-themes";
 
+import { Icon } from "@/components/ui/huge-icon";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,8 +18,14 @@ export function ThemeToggle() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="h-7 w-7 cursor-pointer">
-          <Sun className="h-3.5 w-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-3.5 w-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <Icon
+            icon={Sun01Icon}
+            className="h-3.5 w-3.5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
+          />
+          <Icon
+            icon={Moon01Icon}
+            className="absolute h-3.5 w-3.5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
+          />
           <span className="sr-only">Toggle theme</span>
         </Button>
       </DropdownMenuTrigger>

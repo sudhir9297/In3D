@@ -13,29 +13,25 @@ export const RightSideBar = ({
 }) => {
   return (
     <div
-      className="absolute right-0 top-0 z-50 h-full py-2 pr-2 transition-all duration-300"
+      className="absolute right-0 top-12 z-50 h-[calc(100%-3rem)] transition-all duration-300"
       style={{
         transform: `translateX(${isVisible ? "0" : "100%"})`,
-        width: "300px",
+        width: "320px",
       }}
     >
       <PanelRight
         size={20}
         strokeWidth={1.5}
         animateOnHover
-        className="absolute -left-8  top-5 cursor-pointer"
+        className="absolute -left-9 top-3 cursor-pointer rounded-none border border-border bg-card p-1 text-muted-foreground"
         onClick={onPanelToggle}
       />
       <div
-        className="relative h-full bg-card overflow-hidden rounded-xl border  text-xs transition-all duration-300 "
-        // style={{
-        //   opacity: isVisible ? 1 : 0,
-        //   visibility: isVisible ? "visible" : "hidden",
-        // }}
+        className="studio-panel relative h-full overflow-hidden rounded-none text-xs transition-all duration-300"
       >
         <Tabs
           defaultValue="material"
-          className="overflow-hidden  w-full h-1/2 md:h-full flex flex-col md:flex-row justify-between "
+          className="flex h-1/2 w-full flex-col justify-between overflow-hidden md:h-full md:flex-row"
         >
           <IconSidebar />
           <CollapsedSideBar />

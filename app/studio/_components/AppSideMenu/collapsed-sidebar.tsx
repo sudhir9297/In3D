@@ -9,15 +9,15 @@ export const CollapsedSideBar = () => {
   return (
     <div
       className={cn(
-        "relative border-b md:border-l md:h-full h-full w-full md:py-3 px-1 text-xs transition-all duration-300 ease-in-out overflow-hidden",
+        "relative h-full w-full overflow-hidden border-b border-border text-xs transition-all duration-300 ease-in-out md:h-full md:border-l md:border-b-0",
       )}
     >
       <TabsContent
         value="material"
         className="h-full m-0 flex flex-col overflow-hidden"
       >
-        <h3 className="font-medium text-sm px-3 mb-2 shrink-0">
-          Material Settings
+        <h3 className="mb-3 flex h-12 shrink-0 items-center border-b border-border px-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          Material
         </h3>
         <MaterialSettings />
       </TabsContent>
@@ -25,8 +25,8 @@ export const CollapsedSideBar = () => {
         value="environment"
         className="h-full m-0 flex flex-col overflow-hidden"
       >
-        <h3 className="font-medium text-sm px-3 mb-2 shrink-0">
-          Environment Settings
+        <h3 className="mb-3 flex h-12 shrink-0 items-center border-b border-border px-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          Environment
         </h3>
         <EnvironmentSettings />
       </TabsContent>
@@ -34,8 +34,8 @@ export const CollapsedSideBar = () => {
         value="postprocessing"
         className="h-full m-0 flex flex-col overflow-hidden"
       >
-        <h3 className="font-medium text-sm px-3 mb-2 shrink-0">
-          Postprocessing Settings
+        <h3 className="mb-3 flex h-12 shrink-0 items-center border-b border-border px-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          Post Processing
         </h3>
         <PostprocessingSettings />
       </TabsContent>

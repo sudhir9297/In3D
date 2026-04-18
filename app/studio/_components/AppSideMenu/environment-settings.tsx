@@ -12,14 +12,15 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
-  ChevronDown,
-  Palette,
-  Sun,
-  Maximize2,
-  Settings2,
-  ImagePlus,
-  X,
-} from "lucide-react";
+  ArrowDown01Icon,
+  Cancel01Icon,
+  ColorPickerIcon,
+  ImageAdd01Icon,
+  Maximize01Icon,
+  Settings02Icon,
+  Sun01Icon,
+} from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/ui/huge-icon";
 
 const HDR_PRESETS = [
   "apartment",
@@ -98,15 +99,15 @@ export const EnvironmentSettings = () => {
   };
 
   return (
-    <div className="space-y-3 p-2 overflow-y-auto flex-1 h-full min-h-0">
+    <div className="space-y-3 px-2 overflow-y-auto flex-1 h-full min-h-0">
       {/* Background Section */}
       <Collapsible defaultOpen>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
-            <Palette className="w-4 h-4" />
+            <Icon icon={ColorPickerIcon} className="h-4 w-4" />
             <span className="font-medium text-sm">Background</span>
           </div>
-          <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-3 mt-2 px-2 pb-2">
@@ -149,7 +150,7 @@ export const EnvironmentSettings = () => {
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center p-2 text-center text-muted-foreground">
-                      <ImagePlus className="w-6 h-6 mb-1 opacity-50" />
+                      <Icon icon={ImageAdd01Icon} className="mb-1 h-6 w-6 opacity-50" />
                       <span className="text-[10px]">Upload Image</span>
                     </div>
                   )}
@@ -166,7 +167,7 @@ export const EnvironmentSettings = () => {
                     className="absolute -top-2 -right-2 p-1 bg-background border rounded-full shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors z-10"
                     title="Clear Background Image"
                   >
-                    <X className="w-3 h-3" />
+                    <Icon icon={Cancel01Icon} className="h-3 w-3" />
                   </button>
                 )}
               </div>
@@ -179,10 +180,10 @@ export const EnvironmentSettings = () => {
       <Collapsible defaultOpen>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
-            <Sun className="w-4 h-4" />
+            <Icon icon={Sun01Icon} className="h-4 w-4" />
             <span className="font-medium text-sm">Environment (HDR)</span>
           </div>
-          <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-3 mt-2 px-2 pb-2">
@@ -310,10 +311,10 @@ export const EnvironmentSettings = () => {
       <Collapsible defaultOpen>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
-            <Sun className="w-4 h-4 opacity-70" />
+            <Icon icon={Sun01Icon} className="h-4 w-4 opacity-70" />
             <span className="font-medium text-sm">Ambient Light</span>
           </div>
-          <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-3 mt-2 px-2 pb-2">
@@ -372,10 +373,10 @@ export const EnvironmentSettings = () => {
       <Collapsible defaultOpen>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
-            <Settings2 className="w-4 h-4" />
+            <Icon icon={Settings02Icon} className="h-4 w-4" />
             <span className="font-medium text-sm">Atmospheric Fog</span>
           </div>
-          <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-3 mt-2 px-2 pb-2">
@@ -450,10 +451,10 @@ export const EnvironmentSettings = () => {
       <Collapsible defaultOpen>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
-            <Maximize2 className="w-4 h-4" />
+            <Icon icon={Maximize01Icon} className="h-4 w-4" />
             <span className="font-medium text-sm">Tone Mapping</span>
           </div>
-          <ChevronDown className="w-4 h-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
+          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-3 mt-2 px-2 pb-2">
