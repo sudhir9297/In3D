@@ -3,7 +3,13 @@ import { useModelStore } from "../../store/modelStore";
 import { loadGlbModel } from "../../utils/modelLoaders";
 import { cn } from "@/lib/utils";
 
-const Dropzone = ({ isDragging }: { isDragging: boolean }) => {
+const Dropzone = ({
+  isDragging,
+  renderer,
+}: {
+  isDragging: boolean;
+  renderer: unknown;
+}) => {
   const { addObject } = useModelStore();
 
   const handleFileSelect = useCallback(
@@ -12,11 +18,11 @@ const Dropzone = ({ isDragging }: { isDragging: boolean }) => {
       if (!files || files.length === 0) return;
 
       Array.from(files).forEach(async (file) => {
-        const object = await loadGlbModel(file);
+        const object = await loadGlbModel(file, renderer);
         if (object) addObject(object);
       });
     },
-    [addObject]
+    [addObject, renderer],
   );
 
   return (

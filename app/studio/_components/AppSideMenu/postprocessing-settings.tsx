@@ -1,301 +1,269 @@
 "use client";
 
 import React from "react";
-import { usePostprocessingStore } from "../../store/postprocessingStore";
-import { cn } from "@/lib/utils";
+
+import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Icon } from "@/components/ui/huge-icon";
+import { usePostprocessingStore } from "../../store/postprocessingStore";
 import {
   ArrowDown01Icon,
-  Camera01Icon,
-  ColorPickerIcon,
-  Layers01Icon,
+  ColorsIcon,
+  MirrorIcon,
   SparklesIcon,
-  ViewIcon,
 } from "@hugeicons/core-free-icons";
-import { Switch } from "@/components/ui/switch";
-import { Icon } from "@/components/ui/huge-icon";
 
-export const PostprocessingSettings = () => {
-  const {
-    bloom,
-    ssao,
-    vignette,
-    chromaticAberration,
-    colorCorrection,
-    setBloom,
-    setSSAO,
-    setVignette,
-    setChromaticAberration,
-    setColorCorrection,
-  } = usePostprocessingStore();
-
+function EffectToggle({
+  label,
+  enabled,
+  onClick,
+}: {
+  label: string;
+  enabled: boolean;
+  onClick: () => void;
+}) {
   return (
-    <div className="space-y-3 px-2 overflow-y-auto flex-1 h-full min-h-0">
-      {/* Bloom Section */}
-      <Collapsible defaultOpen>
-        <div className="flex items-center justify-between px-2 py-1">
-          <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1 text-left">
-            <Icon icon={SparklesIcon} className="h-4 w-4 text-yellow-500/80" />
-            <span className="font-medium text-sm">Bloom</span>
-            <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
-          </CollapsibleTrigger>
-          <Switch
-            checked={bloom.enabled}
-            onCheckedChange={(enabled: boolean) => setBloom({ enabled })}
-          />
-        </div>
-        <CollapsibleContent>
-          <div
-            className={cn(
-              "space-y-4 mt-2 px-2 pb-2",
-              !bloom.enabled && "opacity-50 pointer-events-none",
-            )}
-          >
-            <PropertySlider
-              label="Intensity"
-              value={bloom.intensity}
-              min={0}
-              max={2}
-              step={0.01}
-              onChange={(val) => setBloom({ intensity: val })}
-            />
-            <PropertySlider
-              label="Threshold"
-              value={bloom.luminanceThreshold}
-              min={0}
-              max={1}
-              step={0.01}
-              onChange={(val) => setBloom({ luminanceThreshold: val })}
-            />
-            <PropertySlider
-              label="Smoothing"
-              value={bloom.luminanceSmoothing}
-              min={0}
-              max={1}
-              step={0.01}
-              onChange={(val) => setBloom({ luminanceSmoothing: val })}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Ambient Occlusion (SSAO) */}
-      <Collapsible>
-        <div className="flex items-center justify-between px-2 py-2">
-          <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1 text-left">
-            <Icon icon={Layers01Icon} className="h-4 w-4 text-blue-500/80" />
-            <span className="font-medium text-sm">Ambient Occlusion</span>
-            <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
-          </CollapsibleTrigger>
-          <Switch
-            checked={ssao.enabled}
-            onCheckedChange={(enabled: boolean) => setSSAO({ enabled })}
-          />
-        </div>
-        <CollapsibleContent>
-          <div
-            className={cn(
-              "space-y-4 mt-2 px-2 pb-2",
-              !ssao.enabled && "opacity-50 pointer-events-none",
-            )}
-          >
-            <PropertySlider
-              label="Intensity"
-              value={ssao.intensity}
-              min={0}
-              max={5}
-              step={0.1}
-              onChange={(val) => setSSAO({ intensity: val })}
-            />
-            <PropertySlider
-              label="Radius"
-              value={ssao.radius}
-              min={0}
-              max={1}
-              step={0.01}
-              onChange={(val) => setSSAO({ radius: val })}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Camera Effects */}
-      <Collapsible>
-        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md group">
-          <div className="flex items-center gap-2">
-            <Icon icon={Camera01Icon} className="h-4 w-4 text-purple-500/80" />
-            <span className="font-medium text-sm">Camera Effects</span>
-          </div>
-          <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="space-y-6 mt-4 px-2 pb-2">
-            {/* Vignette */}
-            <div className="space-y-3 pt-2 border-t border-muted/50">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Vignette
-                </span>
-                <Switch
-                  checked={vignette.enabled}
-                  onCheckedChange={(enabled: boolean) =>
-                    setVignette({ enabled })
-                  }
-                />
-              </div>
-              <div
-                className={cn(
-                  !vignette.enabled && "opacity-50 pointer-events-none",
-                )}
-              >
-                <PropertySlider
-                  label="Offset"
-                  value={vignette.offset}
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  onChange={(val) => setVignette({ offset: val })}
-                />
-                <PropertySlider
-                  label="Darkness"
-                  value={vignette.darkness}
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  onChange={(val) => setVignette({ darkness: val })}
-                />
-              </div>
-            </div>
-
-            {/* Chromatic Aberration */}
-            <div className="space-y-3 pt-4 border-t border-muted/50">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Abberation
-                </span>
-                <Switch
-                  checked={chromaticAberration.enabled}
-                  onCheckedChange={(enabled: boolean) =>
-                    setChromaticAberration({ enabled })
-                  }
-                />
-              </div>
-              <div
-                className={cn(
-                  !chromaticAberration.enabled &&
-                    "opacity-50 pointer-events-none",
-                )}
-              >
-                <PropertySlider
-                  label="Displacement"
-                  value={chromaticAberration.offset[0]}
-                  min={0}
-                  max={0.02}
-                  step={0.001}
-                  onChange={(val) =>
-                    setChromaticAberration({ offset: [val, val] })
-                  }
-                />
-              </div>
-            </div>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Color Correction */}
-      <Collapsible>
-        <div className="flex items-center justify-between px-2 py-2">
-          <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1 text-left">
-            <Icon icon={ColorPickerIcon} className="h-4 w-4 text-emerald-500/80" />
-            <span className="font-medium text-sm">Color Correction</span>
-            <Icon icon={ArrowDown01Icon} className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180" />
-          </CollapsibleTrigger>
-          <Switch
-            checked={colorCorrection.enabled}
-            onCheckedChange={(enabled: boolean) =>
-              setColorCorrection({ enabled })
-            }
-          />
-        </div>
-        <CollapsibleContent>
-          <div
-            className={cn(
-              "space-y-4 mt-2 px-2 pb-2",
-              !colorCorrection.enabled && "opacity-50 pointer-events-none",
-            )}
-          >
-            <PropertySlider
-              label="Brightness"
-              value={colorCorrection.brightness}
-              min={-0.5}
-              max={0.5}
-              step={0.01}
-              onChange={(val) => setColorCorrection({ brightness: val })}
-            />
-            <PropertySlider
-              label="Contrast"
-              value={colorCorrection.contrast}
-              min={-0.5}
-              max={0.5}
-              step={0.01}
-              onChange={(val) => setColorCorrection({ contrast: val })}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* Performance Switch placeholder/Coming Soon */}
-      <div className="flex items-center gap-2 px-3 py-2 mt-4 rounded-lg bg-accent/30 opacity-60">
-        <Icon icon={ViewIcon} className="h-3.5 w-3.5" />
-        <span className="text-[10px] font-medium italic">
-          Settings are applied globally
-        </span>
-      </div>
-
-      <div className="h-10 grow" />
+    <div className="flex items-center justify-between border border-border px-3 py-2">
+      <span className="text-sm">{label}</span>
+      <Button
+        variant={enabled ? "secondary" : "ghost"}
+        size="xs"
+        className="h-7 px-2 text-[11px]"
+        onClick={onClick}
+      >
+        {enabled ? "On" : "Off"}
+      </Button>
     </div>
   );
-};
+}
 
-// Reusable slider component to match the studio aesthetic
 function PropertySlider({
   label,
   value,
   min,
   max,
   step,
-  onChange,
+  valueDisplay,
+  onValueChange,
 }: {
   label: string;
   value: number;
   min: number;
   max: number;
   step: number;
-  onChange: (val: number) => void;
+  valueDisplay: string;
+  onValueChange: (value: number) => void;
 }) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] text-muted-foreground font-medium">
+        <label className="text-[11px] font-medium text-muted-foreground">
           {label}
         </label>
-        <span className="text-[10px] font-mono bg-muted/50 px-1.5 py-0.5 rounded text-muted-foreground">
-          {value.toFixed(2)}
+        <span className="bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+          {valueDisplay}
         </span>
       </div>
       <input
         type="range"
+        value={value}
         min={min}
         max={max}
         step={step}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full h-1 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-chart-2 hover:[&::-webkit-slider-thumb]:bg-chart-2/80 transition-colors"
+        onChange={(event) => onValueChange(parseFloat(event.target.value))}
+        className="h-1 w-full cursor-pointer appearance-none rounded-full bg-muted [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-chart-2"
       />
     </div>
   );
 }
+
+export const PostprocessingSettings = () => {
+  const bloom = usePostprocessingStore((state) => state.bloom);
+  const ssr = usePostprocessingStore((state) => state.ssr);
+  const ssgi = usePostprocessingStore((state) => state.ssgi);
+  const setBloom = usePostprocessingStore((state) => state.setBloom);
+  const setSsr = usePostprocessingStore((state) => state.setSsr);
+  const setSsgi = usePostprocessingStore((state) => state.setSsgi);
+
+  return (
+    <div className="space-y-3 px-2 flex-1 h-full min-h-0 overflow-y-auto">
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
+          <div className="flex items-center gap-2">
+            <Icon icon={SparklesIcon} className="h-4 w-4" />
+            <span className="font-medium text-sm">Bloom</span>
+          </div>
+          <Icon
+            icon={ArrowDown01Icon}
+            className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180"
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-3 mt-2 px-2 pb-2">
+            <EffectToggle
+              label="Bloom"
+              enabled={bloom.enabled}
+              onClick={() => setBloom({ enabled: !bloom.enabled })}
+            />
+            <PropertySlider
+              label="Strength"
+              value={bloom.strength}
+              min={0}
+              max={2}
+              step={0.01}
+              valueDisplay={bloom.strength.toFixed(2)}
+              onValueChange={(value) => setBloom({ strength: value })}
+            />
+            <PropertySlider
+              label="Radius"
+              value={bloom.radius}
+              min={0}
+              max={2}
+              step={0.01}
+              valueDisplay={bloom.radius.toFixed(2)}
+              onValueChange={(value) => setBloom({ radius: value })}
+            />
+            <PropertySlider
+              label="Threshold"
+              value={bloom.threshold}
+              min={0}
+              max={2}
+              step={0.01}
+              valueDisplay={bloom.threshold.toFixed(2)}
+              onValueChange={(value) => setBloom({ threshold: value })}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
+          <div className="flex items-center gap-2">
+            <Icon icon={MirrorIcon} className="h-4 w-4" />
+            <span className="font-medium text-sm">SSR</span>
+          </div>
+          <Icon
+            icon={ArrowDown01Icon}
+            className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180"
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-3 mt-2 px-2 pb-2">
+            <EffectToggle
+              label="SSR"
+              enabled={ssr.enabled}
+              onClick={() => setSsr({ enabled: !ssr.enabled })}
+            />
+            <PropertySlider
+              label="Max Distance"
+              value={ssr.maxDistance}
+              min={0}
+              max={25}
+              step={0.1}
+              valueDisplay={ssr.maxDistance.toFixed(1)}
+              onValueChange={(value) => setSsr({ maxDistance: value })}
+            />
+            <PropertySlider
+              label="Blur Quality"
+              value={ssr.blurQuality}
+              min={0}
+              max={3}
+              step={1}
+              valueDisplay={ssr.blurQuality.toFixed(0)}
+              onValueChange={(value) => setSsr({ blurQuality: value })}
+            />
+            <PropertySlider
+              label="Thickness"
+              value={ssr.thickness}
+              min={0.01}
+              max={2}
+              step={0.01}
+              valueDisplay={ssr.thickness.toFixed(2)}
+              onValueChange={(value) => setSsr({ thickness: value })}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
+          <div className="flex items-center gap-2">
+            <Icon icon={ColorsIcon} className="h-4 w-4" />
+            <span className="font-medium text-sm">SSGI</span>
+          </div>
+          <Icon
+            icon={ArrowDown01Icon}
+            className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180"
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-3 mt-2 px-2 pb-2">
+            <EffectToggle
+              label="SSGI"
+              enabled={ssgi.enabled}
+              onClick={() => setSsgi({ enabled: !ssgi.enabled })}
+            />
+            <PropertySlider
+              label="Slice Count"
+              value={ssgi.sliceCount}
+              min={1}
+              max={8}
+              step={1}
+              valueDisplay={ssgi.sliceCount.toFixed(0)}
+              onValueChange={(value) => setSsgi({ sliceCount: value })}
+            />
+            <PropertySlider
+              label="Step Count"
+              value={ssgi.stepCount}
+              min={1}
+              max={32}
+              step={1}
+              valueDisplay={ssgi.stepCount.toFixed(0)}
+              onValueChange={(value) => setSsgi({ stepCount: value })}
+            />
+            <PropertySlider
+              label="Radius"
+              value={ssgi.radius}
+              min={0.1}
+              max={10}
+              step={0.1}
+              valueDisplay={ssgi.radius.toFixed(1)}
+              onValueChange={(value) => setSsgi({ radius: value })}
+            />
+            <PropertySlider
+              label="GI Intensity"
+              value={ssgi.giIntensity}
+              min={0}
+              max={5}
+              step={0.1}
+              valueDisplay={ssgi.giIntensity.toFixed(1)}
+              onValueChange={(value) => setSsgi({ giIntensity: value })}
+            />
+            <PropertySlider
+              label="AO Intensity"
+              value={ssgi.aoIntensity}
+              min={0}
+              max={5}
+              step={0.1}
+              valueDisplay={ssgi.aoIntensity.toFixed(1)}
+              onValueChange={(value) => setSsgi({ aoIntensity: value })}
+            />
+            <PropertySlider
+              label="Thickness"
+              value={ssgi.thickness}
+              min={0.01}
+              max={10}
+              step={0.01}
+              valueDisplay={ssgi.thickness.toFixed(2)}
+              onValueChange={(value) => setSsgi({ thickness: value })}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+};

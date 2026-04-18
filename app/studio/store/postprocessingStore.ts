@@ -1,101 +1,80 @@
 import { create } from "zustand";
 
-export interface BloomSettings {
-  enabled: boolean;
-  intensity: number;
-  luminanceThreshold: number;
-  luminanceSmoothing: number;
-  mipmapBlur: boolean;
+const MOBILE_BREAKPOINT = 768;
+
+function getDefaultSsgiEnabled() {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  return window.innerWidth >= MOBILE_BREAKPOINT;
 }
 
-export interface SSAOSettings {
+export type BloomSettings = {
   enabled: boolean;
-  intensity: number;
+  strength: number;
   radius: number;
-  bias: number;
-}
+  threshold: number;
+};
 
-export interface VignetteSettings {
+export type SsrSettings = {
   enabled: boolean;
-  offset: number;
-  darkness: number;
-}
+  maxDistance: number;
+  blurQuality: number;
+  thickness: number;
+};
 
-export interface ChromaticAberrationSettings {
+export type SsgiSettings = {
   enabled: boolean;
-  offset: [number, number];
-}
+  sliceCount: number;
+  stepCount: number;
+  radius: number;
+  giIntensity: number;
+  aoIntensity: number;
+  thickness: number;
+};
 
-export interface ColorCorrectionSettings {
-  enabled: boolean;
-  brightness: number;
-  contrast: number;
-}
-
-export interface PostprocessingState {
+type PostprocessingState = {
   bloom: BloomSettings;
-  ssao: SSAOSettings;
-  vignette: VignetteSettings;
-  chromaticAberration: ChromaticAberrationSettings;
-  colorCorrection: ColorCorrectionSettings;
-
-  // Actions
-  setBloom: (settings: Partial<BloomSettings>) => void;
-  setSSAO: (settings: Partial<SSAOSettings>) => void;
-  setVignette: (settings: Partial<VignetteSettings>) => void;
-  setChromaticAberration: (
-    settings: Partial<ChromaticAberrationSettings>,
-  ) => void;
-  setColorCorrection: (settings: Partial<ColorCorrectionSettings>) => void;
-  resetAll: () => void;
-}
-
-const initialState = {
-  bloom: {
-    enabled: false,
-    intensity: 0.5,
-    luminanceThreshold: 0.9,
-    luminanceSmoothing: 0.025,
-    mipmapBlur: true,
-  },
-  ssao: {
-    enabled: false,
-    intensity: 1,
-    radius: 0.1,
-    bias: 0.05,
-  },
-  vignette: {
-    enabled: false,
-    offset: 0.5,
-    darkness: 0.5,
-  },
-  chromaticAberration: {
-    enabled: false,
-    offset: [0.002, 0.002] as [number, number],
-  },
-  colorCorrection: {
-    enabled: false,
-    brightness: 0,
-    contrast: 0,
-  },
+  ssr: SsrSettings;
+  ssgi: SsgiSettings;
+  setBloom: (value: Partial<BloomSettings>) => void;
+  setSsr: (value: Partial<SsrSettings>) => void;
+  setSsgi: (value: Partial<SsgiSettings>) => void;
 };
 
 export const usePostprocessingStore = create<PostprocessingState>((set) => ({
-  ...initialState,
-
-  setBloom: (settings) =>
-    set((state) => ({ bloom: { ...state.bloom, ...settings } })),
-  setSSAO: (settings) =>
-    set((state) => ({ ssao: { ...state.ssao, ...settings } })),
-  setVignette: (settings) =>
-    set((state) => ({ vignette: { ...state.vignette, ...settings } })),
-  setChromaticAberration: (settings) =>
+  bloom: {
+    enabled: false,
+    strength: 0.1,
+    radius: 0.8,
+    threshold: 0.9,
+  },
+  ssr: {
+    enabled: false,
+    maxDistance: 5,
+    blurQuality: 1,
+    thickness: 0.15,
+  },
+  ssgi: {
+    enabled: getDefaultSsgiEnabled(),
+    sliceCount: 2,
+    stepCount: 8,
+    radius: 1,
+    giIntensity: 0.5,
+    aoIntensity: 1.5,
+    thickness: 0.5,
+  },
+  setBloom: (value) =>
     set((state) => ({
-      chromaticAberration: { ...state.chromaticAberration, ...settings },
+      bloom: { ...state.bloom, ...value },
     })),
-  setColorCorrection: (settings) =>
+  setSsr: (value) =>
     set((state) => ({
-      colorCorrection: { ...state.colorCorrection, ...settings },
+      ssr: { ...state.ssr, ...value },
     })),
-  resetAll: () => set(initialState),
+  setSsgi: (value) =>
+    set((state) => ({
+      ssgi: { ...state.ssgi, ...value },
+    })),
 }));

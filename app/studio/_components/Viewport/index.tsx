@@ -1,6 +1,7 @@
 "use client";
 import * as THREE from "three";
-import React, { useCallback, useState, useEffect } from "react";
+import { WebGLRenderer } from "three";
+import React, { useCallback, useRef, useState, useEffect } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import {
   Center,
@@ -62,8 +63,29 @@ const GlUpdater = ({
   return null;
 };
 
+const ViewportGizmo = () => {
+  const { gl } = useThree();
+  const canUseDreiGizmo = Boolean(
+    (gl as { isWebGLRenderer?: boolean }).isWebGLRenderer,
+  );
+
+  if (!canUseDreiGizmo) {
+    return null;
+  }
+
+  return (
+    <GizmoHelper alignment="bottom-right" margin={[60, 60]}>
+      <GizmoViewport
+        axisColors={["#ff3653", "#0adb50", "#2c8fdf"]}
+        labelColor="white"
+      />
+    </GizmoHelper>
+  );
+};
+
 export const ViewerWrapper = () => {
   const [isDragging, setIsDragging] = useState(false);
+  const rendererRef = useRef<unknown>(null);
   const addObject = useModelStore((state) => state.addObject);
   const objects = useModelStore((state) => state.objects);
   const showGrid = useViewportStore((state) => state.showGrid);
@@ -100,7 +122,7 @@ export const ViewerWrapper = () => {
       setIsDragging(false);
 
       Array.from(e.dataTransfer.files).forEach(async (file) => {
-        const object = await loadGlbModel(file);
+        const object = await loadGlbModel(file, rendererRef.current);
         if (object) addObject(object);
       });
     },
@@ -117,19 +139,50 @@ export const ViewerWrapper = () => {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {objects.length === 0 && <Dropzone isDragging={isDragging} />}
+      {objects.length === 0 && (
+        <Dropzone isDragging={isDragging} renderer={rendererRef.current} />
+      )}
 
       <Canvas
+        id="studio-3d-canvas"
+        frameloop="always"
+        dpr={[1, 1.25]}
         className="absolute top-0 left-0 w-full h-full"
         onCreated={({ gl }) => {
-          gl.shadowMap.enabled = true;
-          gl.shadowMap.type = THREE.PCFSoftShadowMap;
-          gl.outputColorSpace = THREE.SRGBColorSpace;
+          rendererRef.current = gl;
         }}
-        shadows
-        gl={{
-          alpha: true,
+        shadows={{
+          type: THREE.PCFSoftShadowMap,
+          enabled: true,
         }}
+        gl={
+          (async (props: HTMLCanvasElement) => {
+            const createWebGLRenderer = () => {
+              const renderer = new WebGLRenderer({
+                ...(props as any),
+                antialias: true,
+                powerPreference: "high-performance",
+              });
+              renderer.toneMapping = THREE.ACESFilmicToneMapping;
+              renderer.toneMappingExposure = 0.9;
+              return renderer as any;
+            };
+
+            try {
+              const { WebGPURenderer } = await import("three/webgpu");
+              const renderer = new WebGPURenderer(props as any);
+              renderer.toneMapping = THREE.ACESFilmicToneMapping;
+              renderer.toneMappingExposure = 0.9;
+              await renderer.init();
+              return renderer as any;
+            } catch {
+              console.warn(
+                "[Viewer] WebGPU init failed, falling back to WebGLRenderer.",
+              );
+              return createWebGLRenderer();
+            }
+          }) as any
+        }
         camera={{ fov: 50, near: 0.1, far: 1000 }}
       >
         <GlUpdater
@@ -172,12 +225,7 @@ export const ViewerWrapper = () => {
         )}
         {showGrid && <SceneGrid />}
 
-        <GizmoHelper alignment="bottom-right" margin={[60, 60]}>
-          <GizmoViewport
-            axisColors={["#ff3653", "#0adb50", "#2c8fdf"]}
-            labelColor="white"
-          />
-        </GizmoHelper>
+        <ViewportGizmo />
 
         <Postprocessing />
       </Canvas>
