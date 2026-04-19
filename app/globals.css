@@ -137,10 +137,21 @@
     linear-gradient(to bottom, oklch(0.972 0.004 85), oklch(0.956 0.004 85));
 }
 
+.dark .studio-app {
+  background:
+    linear-gradient(to bottom, oklch(0.18 0.005 85), oklch(0.14 0.004 85));
+}
+
 .studio-panel {
   background: color-mix(in oklab, var(--card) 92%, white 8%);
   border: 1px solid color-mix(in oklab, var(--border) 94%, black 6%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.dark .studio-panel {
+  background: color-mix(in oklab, var(--card) 94%, black 6%);
+  border: 1px solid color-mix(in oklab, var(--border) 84%, white 16%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .studio-tab {
@@ -153,7 +164,9 @@
 
 .studio-app * {
   scrollbar-width: thin;
-  scrollbar-color: oklch(0.64 0.01 85) oklch(0.93 0.004 85);
+  scrollbar-color:
+    color-mix(in oklab, var(--muted-foreground) 72%, var(--background) 28%)
+    color-mix(in oklab, var(--muted) 88%, var(--background) 12%);
 }
 
 .studio-app *::-webkit-scrollbar {
@@ -162,19 +175,19 @@
 }
 
 .studio-app *::-webkit-scrollbar-track {
-  background: color-mix(in oklab, var(--muted) 88%, white 12%);
-  border-left: 1px solid color-mix(in oklab, var(--border) 92%, white 8%);
-  border-top: 1px solid color-mix(in oklab, var(--border) 92%, white 8%);
+  background: color-mix(in oklab, var(--muted) 88%, var(--background) 12%);
+  border-left: 1px solid color-mix(in oklab, var(--border) 92%, var(--background) 8%);
+  border-top: 1px solid color-mix(in oklab, var(--border) 92%, var(--background) 8%);
 }
 
 .studio-app *::-webkit-scrollbar-thumb {
   background:
     linear-gradient(
       to bottom,
-      oklch(0.72 0.008 85),
-      oklch(0.58 0.01 85)
+      color-mix(in oklab, var(--muted-foreground) 54%, var(--background) 46%),
+      color-mix(in oklab, var(--foreground) 34%, var(--muted) 66%)
     );
-  border: 2px solid color-mix(in oklab, var(--muted) 90%, white 10%);
+  border: 2px solid color-mix(in oklab, var(--muted) 90%, var(--background) 10%);
   border-radius: 999px;
 }
 
@@ -182,13 +195,13 @@
   background:
     linear-gradient(
       to bottom,
-      oklch(0.66 0.01 85),
-      oklch(0.5 0.012 85)
+      color-mix(in oklab, var(--foreground) 46%, var(--muted) 54%),
+      color-mix(in oklab, var(--foreground) 58%, var(--background) 42%)
     );
 }
 
 .studio-app *::-webkit-scrollbar-corner {
-  background: color-mix(in oklab, var(--muted) 88%, white 12%);
+  background: color-mix(in oklab, var(--muted) 88%, var(--background) 12%);
 }
 
 /* Keyframes */

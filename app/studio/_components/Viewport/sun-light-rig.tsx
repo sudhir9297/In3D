@@ -13,9 +13,7 @@ import {
 import {
   usePostprocessingStore,
 } from "../../store/postprocessingStore";
-import { useViewportStore } from "../../store/viewportStore";
 import {
-  downgradeQualityPreset,
   SHADOW_MAP_SIZES,
 } from "../../utils/renderQuality";
 
@@ -167,12 +165,8 @@ export function SunLightRig() {
   const autoQuality = usePostprocessingStore((state) => state.autoQuality);
   const lowerQuality = usePostprocessingStore((state) => state.lowerQuality);
   const raiseQuality = usePostprocessingStore((state) => state.raiseQuality);
-  const isInteracting = useViewportStore((state) => state.isInteracting);
-  const effectiveQualityPreset = isInteracting
-    ? downgradeQualityPreset(qualityPreset)
-    : qualityPreset;
-  const shadowMapSize = SHADOW_MAP_SIZES[effectiveQualityPreset];
-  const enableFillLight = effectiveQualityPreset !== "performance";
+  const shadowMapSize = SHADOW_MAP_SIZES[qualityPreset];
+  const enableFillLight = qualityPreset !== "performance";
 
   useEffect(() => {
     const unsubscribeLighting = useLightingStore.subscribe((state) => {

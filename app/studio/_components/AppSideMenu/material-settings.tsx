@@ -548,7 +548,7 @@ export const MaterialSettings = () => {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="mt-2 px-2 pb-2">
-                      <div className="w-28">
+                      <div className="w-36">
                         <MapRow
                           mapKey={section.key}
                           label={section.label}
@@ -835,11 +835,11 @@ const MapRow = React.memo(function MapRow({
         accept="image/*,.ktx2"
       />
 
-      <div className="flex items-start gap-1.5">
+      <div className="space-y-1.5">
         <div
           onClick={() => canEdit && fileInputRef.current?.click()}
           className={cn(
-            "relative flex aspect-square flex-1 cursor-pointer items-center justify-center overflow-hidden rounded-[6px] border shadow-sm",
+            "relative flex aspect-square w-full cursor-pointer items-center justify-center overflow-hidden rounded-[6px] border shadow-sm",
             isActive
               ? "bg-chart-2/20 border-chart-2/50"
               : "bg-background border-border",
@@ -875,13 +875,14 @@ const MapRow = React.memo(function MapRow({
           </button>
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="grid grid-cols-2 gap-1">
           <Button
             variant="outline"
             size="xs"
             onClick={onReset}
             disabled={!canEdit}
             title={`Reset ${label}`}
+            className="w-full justify-center"
           >
             <Icon icon={ArrowReloadHorizontalIcon} className="h-3.5 w-3.5" />
           </Button>
@@ -890,7 +891,7 @@ const MapRow = React.memo(function MapRow({
             size="xs"
             onClick={handleClear}
             disabled={!canEdit || !isActive}
-            className="text-destructive hover:text-destructive"
+            className="w-full justify-center text-destructive hover:text-destructive"
             title={`Remove ${label}`}
           >
             <Icon icon={Cancel01Icon} className="h-3.5 w-3.5" />

@@ -12,7 +12,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "In3d Studio",
+  title: "In3D Viewer",
   description: "A 3D Configurator",
 };
 
@@ -28,7 +28,6 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="light"
           enableSystem={false}
-          forcedTheme="light"
           disableTransitionOnChange
         >
           {children}

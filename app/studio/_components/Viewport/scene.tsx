@@ -2,11 +2,15 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { ModelStore, useModelStore } from "../../store/modelStore";
 import { Object3D } from "three";
 import { TransformControls } from "@react-three/drei";
-import { highlightMesh, extractMaterialProperties } from "../../utils/common";
+import {
+  highlightMesh,
+  extractMaterialProperties,
+  getFirstMesh,
+} from "../../utils/common";
 import { useViewportStore } from "../../store/viewportStore";
 import { useMaterialStore } from "../../store/materialStore";
 import useClickOrDrag from "../../hooks/useClickOrDrag";
-import { ThreeEvent } from "@react-three/fiber";
+import { ThreeEvent, useThree } from "@react-three/fiber";
 
 const resolveTransformTarget = (
   selectedObject: Object3D | null,
@@ -30,6 +34,7 @@ const resolveTransformTarget = (
 
 const Scene = () => {
   const isTransformingRef = useRef(false);
+  const highlightTimelineRef = useRef<ReturnType<typeof highlightMesh>>(null);
   const objects = useModelStore((state: ModelStore) => state.objects);
   const setSelectedObject = useModelStore(
     (state: ModelStore) => state.setSelectedObject,
@@ -44,24 +49,58 @@ const Scene = () => {
   const setMaterial = useMaterialStore((state) => state.setMaterial);
   const setSelectedMesh = useMaterialStore((state) => state.setSelectedMesh);
   const clearMaterial = useMaterialStore((state) => state.clearMaterial);
+  const invalidate = useThree((state) => state.invalidate);
   const transformTarget = useMemo(
     () => resolveTransformTarget(selectedObject, objects),
     [objects, selectedObject],
   );
 
   useEffect(() => {
+    if (highlightTimelineRef.current) {
+      highlightTimelineRef.current.progress(1);
+      highlightTimelineRef.current.kill();
+      highlightTimelineRef.current = null;
+    }
+
     if (selectedObject) {
-      highlightMesh(selectedObject);
+      highlightTimelineRef.current = highlightMesh(selectedObject, {
+        onStart: invalidate,
+        onUpdate: invalidate,
+        onComplete: invalidate,
+      });
+
+      const selectedMesh = getFirstMesh(selectedObject);
+
       // Extract and store material properties
-      const extracted = extractMaterialProperties(selectedObject);
-      if (extracted) {
+      const extracted = selectedMesh
+        ? extractMaterialProperties(selectedMesh)
+        : null;
+
+      if (extracted && selectedMesh) {
         setMaterial(extracted.maps, extracted.mapProperties);
-        setSelectedMesh(selectedObject);
+        setSelectedMesh(selectedMesh);
+      } else {
+        clearMaterial();
       }
     } else {
       clearMaterial();
     }
-  }, [selectedObject, setMaterial, setSelectedMesh, clearMaterial]);
+
+    return () => {
+      if (highlightTimelineRef.current) {
+        highlightTimelineRef.current.progress(1);
+        highlightTimelineRef.current.kill();
+        highlightTimelineRef.current = null;
+        invalidate();
+      }
+    };
+  }, [
+    clearMaterial,
+    invalidate,
+    selectedObject,
+    setMaterial,
+    setSelectedMesh,
+  ]);
 
   const handleClick = (
     action: string,

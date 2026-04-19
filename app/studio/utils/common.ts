@@ -8,6 +8,7 @@ interface HighlightOptions {
   ease?: string;
   onComplete?: () => void;
   onStart?: () => void;
+  onUpdate?: () => void;
   intensity?: number;
   pulseDuration?: number;
   pulseCount?: number;
@@ -31,7 +32,7 @@ const isMaterialWithEmissive = (
 };
 
 export const highlightMesh = (
-  mesh: Object3D,
+  object: Object3D,
   options: HighlightOptions = {},
 ): gsap.core.Timeline | null => {
   const {
@@ -41,21 +42,40 @@ export const highlightMesh = (
     ease = "power2.inOut",
     onComplete,
     onStart,
+    onUpdate,
     intensity = 0.3,
     pulseDuration,
     pulseCount = 1,
   } = options;
 
-  // Type guard to ensure we have a mesh
-  if (!(mesh instanceof Mesh)) {
-    console.warn("highlightMesh: Object is not a Mesh instance");
+  const meshes: Mesh[] = [];
+  const materialSet = new Set<Material>();
+
+  object.traverse((child) => {
+    if (child instanceof Mesh) {
+      meshes.push(child);
+    }
+  });
+
+  if (meshes.length === 0) {
+    console.warn("highlightMesh: No mesh found in selected object");
     return null;
   }
 
-  // Handle array of materials
-  const materials = Array.isArray(mesh.material)
-    ? mesh.material
-    : [mesh.material];
+  const materials = meshes.flatMap((mesh) => {
+    const meshMaterials = Array.isArray(mesh.material)
+      ? mesh.material
+      : [mesh.material];
+
+    return meshMaterials.filter((material): material is Material => {
+      if (!material || materialSet.has(material)) {
+        return false;
+      }
+
+      materialSet.add(material);
+      return true;
+    });
+  });
 
   // Filter materials that have color property
   const coloredMaterials = materials.filter(isMaterialWithColor);
@@ -92,6 +112,7 @@ export const highlightMesh = (
   const timeline = gsap.timeline({
     delay,
     onStart,
+    onUpdate,
     onComplete: () => {
       // Ensure colors are restored to exact original values
       originalColors.forEach(
@@ -144,16 +165,22 @@ export const highlightMesh = (
       }
     } else {
       // Single highlight and return
-      timeline.to(material.color, colorAnimation).to(material.color, {
-        r: originalColors.find((oc) => oc.material === material)!.originalColor
-          .r,
-        g: originalColors.find((oc) => oc.material === material)!.originalColor
-          .g,
-        b: originalColors.find((oc) => oc.material === material)!.originalColor
-          .b,
-        duration,
-        ease,
-      });
+      timeline
+        .to(material.color, colorAnimation, 0)
+        .to(
+          material.color,
+          {
+            r: originalColors.find((oc) => oc.material === material)!
+              .originalColor.r,
+            g: originalColors.find((oc) => oc.material === material)!
+              .originalColor.g,
+            b: originalColors.find((oc) => oc.material === material)!
+              .originalColor.b,
+            duration,
+            ease,
+          },
+          duration,
+        );
     }
 
     // Add emissive glow if material supports it
@@ -188,21 +215,45 @@ export const highlightMesh = (
       } else {
         timeline
           .to(material.emissive, emissiveAnimation, 0)
-          .to(material.emissive, {
-            r: originalColors.find((oc) => oc.material === material)!
-              .originalEmissive!.r,
-            g: originalColors.find((oc) => oc.material === material)!
-              .originalEmissive!.g,
-            b: originalColors.find((oc) => oc.material === material)!
-              .originalEmissive!.b,
+          .to(
+            material.emissive,
+            {
+              r: originalColors.find((oc) => oc.material === material)!
+                .originalEmissive!.r,
+              g: originalColors.find((oc) => oc.material === material)!
+                .originalEmissive!.g,
+              b: originalColors.find((oc) => oc.material === material)!
+                .originalEmissive!.b,
+              duration,
+              ease,
+            },
             duration,
-            ease,
-          });
+          );
       }
     }
   });
 
   return timeline;
+};
+
+export const getFirstMesh = (object: Object3D | null): Mesh | null => {
+  if (!object) {
+    return null;
+  }
+
+  if (object instanceof Mesh) {
+    return object;
+  }
+
+  let resolvedMesh: Mesh | null = null;
+
+  object.traverse((child) => {
+    if (!resolvedMesh && child instanceof Mesh) {
+      resolvedMesh = child;
+    }
+  });
+
+  return resolvedMesh;
 };
 
 // ====================

@@ -328,7 +328,7 @@ function SceneNode({
     <li ref={registerRowRef(object.uuid)} className="relative w-max">
       {level > 0 ? (
         <div
-          className="absolute left-[-16px] top-0 w-px bg-[#d8d2c9]"
+          className="absolute left-[-16px] top-0 w-px bg-border"
           style={{
             height: isLast && !hasChildren ? "16px" : "100%",
           }}
@@ -337,7 +337,7 @@ function SceneNode({
 
       {level > 0 ? (
         <div
-          className="absolute h-px bg-[#d8d2c9]"
+          className="absolute h-px bg-border"
           style={{
             left: "-16px",
             top: "16px",
@@ -357,7 +357,7 @@ function SceneNode({
             event.stopPropagation();
             onToggle(object, isRoot);
           }}
-          className={`flex h-5 w-5 items-center justify-center text-[#6e6961] ${
+          className={`flex h-5 w-5 items-center justify-center text-muted-foreground ${
             hasChildren ? "" : "invisible"
           }`}
           aria-label={isExpanded ? "Collapse" : "Expand"}
@@ -373,7 +373,7 @@ function SceneNode({
           type="button"
           onClick={() => onSelect(object)}
           className={`flex min-w-max items-center rounded-md px-2 py-1 text-sm hover:bg-accent ${
-            isSelected ? "text-chart-2" : "text-[#3a3732]"
+            isSelected ? "text-chart-2" : "text-foreground"
           }`}
         >
           <span className="mr-1.5">{getNodeIcon(isExpanded, isSelected)}</span>

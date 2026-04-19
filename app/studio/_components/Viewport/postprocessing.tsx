@@ -10,9 +10,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { usePostprocessingStore } from "../../store/postprocessingStore";
-import { useViewportStore } from "../../store/viewportStore";
 import {
-  downgradeQualityPreset,
   SSR_RESOLUTION_SCALE,
 } from "../../utils/renderQuality";
 
@@ -54,15 +52,8 @@ const Postprocessing = () => {
   const ssrSettings = usePostprocessingStore((state) => state.ssr);
   const ssgiSettings = usePostprocessingStore((state) => state.ssgi);
   const qualityPreset = usePostprocessingStore((state) => state.qualityPreset);
-  const isInteracting = useViewportStore((state) => state.isInteracting);
-  const interactionQualityPreset = isInteracting
-    ? downgradeQualityPreset(qualityPreset)
-    : qualityPreset;
-  const effectiveSsrEnabled =
-    ssrSettings.enabled &&
-    (!isInteracting || interactionQualityPreset !== "performance");
-  const effectiveSsgiEnabled =
-    ssgiSettings.enabled && !isInteracting;
+  const effectiveSsrEnabled = ssrSettings.enabled;
+  const effectiveSsgiEnabled = ssgiSettings.enabled;
   const passRefs = useRef<{
     bloomPass: any;
     ssrPass: any;
@@ -107,7 +98,7 @@ const Postprocessing = () => {
     ssrPass.maxDistance.value = ssrSettings.maxDistance;
     ssrPass.blurQuality.value = ssrSettings.blurQuality;
     ssrPass.thickness.value = ssrSettings.thickness;
-    ssrPass.resolutionScale = SSR_RESOLUTION_SCALE[interactionQualityPreset];
+    ssrPass.resolutionScale = SSR_RESOLUTION_SCALE[qualityPreset];
 
     const ssgiPass = ssgi(
       scenePassAColor,
@@ -218,7 +209,7 @@ const Postprocessing = () => {
     bloomSettings.enabled,
     effectiveSsrEnabled,
     effectiveSsgiEnabled,
-    interactionQualityPreset,
+    qualityPreset,
     postProcessing,
     isWebGpuRenderer,
   ]);
@@ -235,7 +226,7 @@ const Postprocessing = () => {
     passes.ssrPass.maxDistance.value = ssrSettings.maxDistance;
     passes.ssrPass.blurQuality.value = ssrSettings.blurQuality;
     passes.ssrPass.thickness.value = ssrSettings.thickness;
-    passes.ssrPass.resolutionScale = SSR_RESOLUTION_SCALE[interactionQualityPreset];
+    passes.ssrPass.resolutionScale = SSR_RESOLUTION_SCALE[qualityPreset];
     passes.ssgiPass.sliceCount.value = ssgiSettings.sliceCount;
     passes.ssgiPass.stepCount.value = ssgiSettings.stepCount;
     passes.ssgiPass.radius.value = ssgiSettings.radius;
@@ -245,8 +236,8 @@ const Postprocessing = () => {
     postProcessing.needsUpdate = true;
   }, [
     bloomSettings,
-    interactionQualityPreset,
     postProcessing,
+    qualityPreset,
     ssrSettings,
     ssgiSettings,
   ]);

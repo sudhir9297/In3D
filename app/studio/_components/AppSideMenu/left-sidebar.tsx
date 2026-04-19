@@ -6,8 +6,8 @@ import { CollapsedSideBar } from "./collapsed-sidebar";
 const LogoHeader = () => {
   return (
     <div className="border-b border-border px-4 py-3">
-      <div className="text-[2.2rem] font-black uppercase leading-none tracking-[-0.14em] text-[#171614]">
-        IN3D VIEWER
+      <div className="text-[2.2rem] font-black leading-none tracking-[-0.08em] text-foreground">
+        In3D Viewer
       </div>
     </div>
   );

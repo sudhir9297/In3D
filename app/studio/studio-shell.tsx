@@ -6,7 +6,7 @@ import { ViewerWrapper } from "./_components/Viewport";
 
 export function StudioShell() {
   return (
-    <div className="studio-app relative h-screen overflow-hidden text-[#161514]">
+    <div className="studio-app relative h-screen overflow-hidden text-foreground">
       <main className="absolute left-0 right-0 top-0 bottom-0">
         <div className="absolute inset-y-0 left-0 right-0 top-0 md:left-[300px]">
           <div className="relative h-full w-full overflow-hidden bg-[#ece9e1]">
