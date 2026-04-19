@@ -353,10 +353,12 @@ export function SunLightRig() {
         shadow-mapSize-width={shadowMapSize}
         shadow-mapSize-height={shadowMapSize}
         shadow-bias={-0.0008}
+        shadow-normalBias={0.02}
+        shadow-radius={1.8}
       >
         <orthographicCamera
           attach="shadow-camera"
-          args={[-12, 12, 12, -12, 0.1, 80]}
+          args={[-10, 10, 10, -10, 0.5, 60]}
         />
       </directionalLight>
 
