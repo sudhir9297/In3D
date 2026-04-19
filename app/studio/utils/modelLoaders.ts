@@ -1,4 +1,4 @@
-import { Box3, Group, Mesh, REVISION, Vector3 } from "three";
+import { Box3, Group, LoadingManager, Mesh, REVISION, Vector3 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { KTX2Loader } from "three/addons/loaders/KTX2Loader.js";
@@ -15,9 +15,10 @@ const ktx2Loader = new KTX2Loader().setTranscoderPath(
 );
 
 let detectedRenderer: unknown = null;
-let loader: GLTFLoader | null = null;
 const targetImportSize = 8;
 const heavyMeshVertexLimit = 150_000;
+
+type AssetFileMap = Map<string, File>;
 
 function normalizeImportedModel(root: Group) {
   root.updateMatrixWorld(true);
@@ -61,35 +62,94 @@ function normalizeImportedModel(root: Group) {
   };
 }
 
-function getLoader(renderer?: unknown) {
+const normalizeAssetKey = (value: string) =>
+  decodeURIComponent(value.split(/[?#]/, 1)[0] ?? "")
+    .replace(/^(\.\/)+/, "")
+    .replace(/^\/+/, "")
+    .toLowerCase();
+
+const getAssetCandidates = (value: string) => {
+  const normalized = normalizeAssetKey(value);
+  const fileName = normalized.split("/").pop() ?? normalized;
+
+  return Array.from(new Set([normalized, fileName]));
+};
+
+const createAssetFileMap = (files: File[]) => {
+  const assetFiles: AssetFileMap = new Map();
+
+  files.forEach((file) => {
+    const normalizedName = normalizeAssetKey(file.name);
+    assetFiles.set(normalizedName, file);
+
+    const fileName = normalizedName.split("/").pop();
+    if (fileName) {
+      assetFiles.set(fileName, file);
+    }
+  });
+
+  return assetFiles;
+};
+
+function createLoader(renderer?: unknown, assetFiles?: AssetFileMap) {
   if (renderer && renderer !== detectedRenderer) {
     ktx2Loader.detectSupport(renderer as any);
     detectedRenderer = renderer;
-    loader = null;
   }
 
-  if (!loader) {
-    loader = new GLTFLoader();
-    loader.setDRACOLoader(dracoLoader);
-    loader.setKTX2Loader(ktx2Loader);
-    loader.setMeshoptDecoder(MeshoptDecoder);
-    loader.setCrossOrigin("anonymous");
-  }
-
-  return loader;
-}
-
-export async function loadGlbModel(
-  file: File,
-  renderer?: unknown,
-): Promise<Group | null> {
-  const url = URL.createObjectURL(file);
-
-  try {
-    if (!file.name.toLowerCase().endsWith(".glb")) {
-      throw new Error("Invalid file type - must be .glb");
+  const objectUrlCache = new Map<File, string>();
+  const manager = new LoadingManager();
+  manager.setURLModifier((url) => {
+    if (!assetFiles) {
+      return url;
     }
 
+    const assetFile = getAssetCandidates(url)
+      .map((candidate) => assetFiles.get(candidate))
+      .find(Boolean);
+
+    if (!assetFile) {
+      return url;
+    }
+
+    const cachedUrl = objectUrlCache.get(assetFile);
+    if (cachedUrl) {
+      return cachedUrl;
+    }
+
+    const objectUrl = URL.createObjectURL(assetFile);
+    objectUrlCache.set(assetFile, objectUrl);
+    return objectUrl;
+  });
+
+  const loader = new GLTFLoader(manager);
+  loader.setDRACOLoader(dracoLoader);
+  loader.setKTX2Loader(ktx2Loader);
+  loader.setMeshoptDecoder(MeshoptDecoder);
+  loader.setCrossOrigin("anonymous");
+
+  const revokeObjectUrls = () => {
+    objectUrlCache.forEach((url) => URL.revokeObjectURL(url));
+    objectUrlCache.clear();
+  };
+
+  return {
+    loader,
+    revokeObjectUrls,
+  };
+}
+
+const isGlbFile = (file: File) => file.name.toLowerCase().endsWith(".glb");
+
+const isGltfFile = (file: File) => file.name.toLowerCase().endsWith(".gltf");
+
+const isModelFile = (file: File) => isGlbFile(file) || isGltfFile(file);
+
+async function parseModelFile(
+  file: File,
+  loader: GLTFLoader,
+): Promise<Group | null> {
+  if (isGlbFile(file)) {
     const buffer = await file.arrayBuffer();
     const header = new Uint8Array(buffer.slice(0, 4));
     const isGLB =
@@ -102,8 +162,28 @@ export async function loadGlbModel(
       throw new Error("Invalid GLB file format");
     }
 
-    const gltf = await getLoader(renderer).loadAsync(url);
-    const root = gltf.scene || gltf.scenes[0];
+    const gltf = await loader.parseAsync(buffer, "");
+    return (gltf.scene || gltf.scenes[0] || null) as Group | null;
+  }
+
+  if (isGltfFile(file)) {
+    const source = await file.text();
+    const gltf = await loader.parseAsync(source, "");
+    return (gltf.scene || gltf.scenes[0] || null) as Group | null;
+  }
+
+  throw new Error("Invalid file type - must be .glb or .gltf");
+}
+
+export async function loadModelFile(
+  file: File,
+  renderer?: unknown,
+  assetFiles?: AssetFileMap,
+): Promise<Group | null> {
+  const { loader, revokeObjectUrls } = createLoader(renderer, assetFiles);
+
+  try {
+    const root = await parseModelFile(file, loader);
 
     if (!root) {
       throw new Error("Failed to load model scene");
@@ -121,9 +201,35 @@ export async function loadGlbModel(
 
     return root as Group;
   } catch (error) {
-    console.error("Error loading GLB model:", error);
+    console.error(`Error loading model "${file.name}":`, error);
     return null;
   } finally {
-    URL.revokeObjectURL(url);
+    revokeObjectUrls();
   }
+}
+
+export async function loadModelFiles(
+  files: File[],
+  renderer?: unknown,
+): Promise<Group[]> {
+  const assetFiles = createAssetFileMap(files);
+  const modelFiles = files.filter(isModelFile);
+
+  const loadedModels = await Promise.all(
+    modelFiles.map((file) => loadModelFile(file, renderer, assetFiles)),
+  );
+
+  return loadedModels.filter((model): model is Group => Boolean(model));
+}
+
+export async function loadGlbModel(
+  file: File,
+  renderer?: unknown,
+): Promise<Group | null> {
+  if (!isModelFile(file)) {
+    console.error(`Unsupported model file "${file.name}"`);
+    return null;
+  }
+
+  return loadModelFile(file, renderer);
 }

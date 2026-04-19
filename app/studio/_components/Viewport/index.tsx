@@ -12,7 +12,7 @@ import {
 } from "@react-three/drei";
 import { cn } from "@/lib/utils";
 import Scene from "./scene";
-import { loadGlbModel } from "../../utils/modelLoaders";
+import { loadModelFiles } from "../../utils/modelLoaders";
 import { useModelStore } from "../../store/modelStore";
 import { useViewportStore } from "../../store/viewportStore";
 import { useViewportRenderInvalidation } from "../../hooks/useViewportRenderInvalidation";
@@ -221,10 +221,10 @@ export const ViewerWrapper = () => {
       e.preventDefault();
       setIsDragging(false);
 
-      Array.from(e.dataTransfer.files).forEach(async (file) => {
-        const object = await loadGlbModel(file, rendererRef.current);
-        if (object) addObject(object);
-      });
+      void loadModelFiles(Array.from(e.dataTransfer.files), rendererRef.current)
+        .then((objects) => {
+          objects.forEach(addObject);
+        });
     },
     [addObject],
   );

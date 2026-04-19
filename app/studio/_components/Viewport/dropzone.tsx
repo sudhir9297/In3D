@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import { useModelStore } from "../../store/modelStore";
-import { loadGlbModel } from "../../utils/modelLoaders";
+import { loadModelFiles } from "../../utils/modelLoaders";
 import { cn } from "@/lib/utils";
 
 const Dropzone = ({
@@ -17,10 +17,11 @@ const Dropzone = ({
       const files = e.target.files;
       if (!files || files.length === 0) return;
 
-      Array.from(files).forEach(async (file) => {
-        const object = await loadGlbModel(file, renderer);
-        if (object) addObject(object);
+      void loadModelFiles(Array.from(files), renderer).then((objects) => {
+        objects.forEach(addObject);
       });
+
+      e.target.value = "";
     },
     [addObject, renderer],
   );
