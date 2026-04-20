@@ -43,6 +43,11 @@ function normalizeImportedModel(root: Group) {
     root.updateMatrixWorld(true);
   }
 
+  const centeredBoundingBox = new Box3().setFromObject(root);
+  const center = centeredBoundingBox.getCenter(new Vector3());
+  root.position.sub(center);
+  root.updateMatrixWorld(true);
+
   root.traverse((child) => {
     if (!(child instanceof Mesh)) {
       return;
