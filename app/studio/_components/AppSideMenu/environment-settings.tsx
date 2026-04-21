@@ -18,6 +18,13 @@ import {
   LightingPreset,
   useLightingStore,
 } from "../../store/lightingStore";
+import {
+  formatLightingClock,
+  getPresetDetails,
+  resolveStylizedLightingPreset,
+  STYLIZED_LIGHTING_PRESET_OPTIONS,
+  STYLIZED_LIGHTING_TIME_MARKS,
+} from "../../utils/stylizedLighting";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
@@ -28,7 +35,6 @@ import { Switch } from "@/components/ui/switch";
 import {
   ArrowDown01Icon,
   Cancel01Icon,
-  CheckmarkCircle02Icon,
   ColorPickerIcon,
   ImageAdd01Icon,
   Maximize01Icon,
@@ -66,6 +72,19 @@ function useRafThrottledNumber(callback: (value: number) => void) {
   );
 }
 
+function wrapStylizedTime(time: number) {
+  return ((time % 100) + 100) % 100;
+}
+
+function getShortestTimeDelta(from: number, to: number) {
+  const direct = to - from;
+  if (Math.abs(direct) <= 50) {
+    return direct;
+  }
+
+  return direct > 0 ? direct - 100 : direct + 100;
+}
+
 const HDR_PRESETS = [
   "apartment",
   "city",
@@ -89,49 +108,7 @@ const TONE_MAPPING_MODES: ToneMappingMode[] = [
   "Neutral",
 ];
 
-const DAYLIGHT_PRESETS: Array<{
-  value: LightingPreset;
-  label: string;
-  time: number;
-}> = [
-  { value: "dawn", label: "Dawn", time: 4 },
-  { value: "golden", label: "Golden", time: 8 },
-  { value: "morning", label: "Morning", time: 24 },
-  { value: "brunch", label: "Brunch", time: 50 },
-  { value: "dusk", label: "Dusk", time: 92 },
-];
-
-const TIME_MARKS = [
-  { label: "5 AM", value: 0 },
-  { label: "9 AM", value: 25 },
-  { label: "1 PM", value: 50 },
-  { label: "5 PM", value: 75 },
-  { label: "9 PM", value: 100 },
-];
-
 const ORIENTATION_MARKS = [0, 90, 180, 270, 360];
-
-function formatLightingClock(currentTime: number) {
-  const startMinutes = 5 * 60;
-  const endMinutes = 21 * 60;
-  const totalMinutes = Math.round(
-    startMinutes + ((endMinutes - startMinutes) * currentTime) / 100,
-  );
-  const hours24 = Math.floor(totalMinutes / 60) % 24;
-  const minutes = totalMinutes % 60;
-  const meridiem = hours24 >= 12 ? "PM" : "AM";
-  const hours = hours24 % 12 || 12;
-
-  return `${hours}:${minutes
-    .toString()
-    .padStart(2, "0")} ${meridiem}`;
-}
-
-function getPresetDetails(preset: LightingPreset) {
-  return (
-    DAYLIGHT_PRESETS.find((entry) => entry.value === preset) ?? DAYLIGHT_PRESETS[0]
-  );
-}
 
 function TickLabels({
   items,
@@ -155,6 +132,12 @@ function TickLabels({
 
 export const EnvironmentSettings = () => {
   const [backgroundPreviewError, setBackgroundPreviewError] = React.useState(false);
+  const [isPaused, setIsPaused] = React.useState(true);
+  const [speedFactor, setSpeedFactor] = React.useState(1);
+  const playbackFrameRef = React.useRef<number | null>(null);
+  const playbackLastTickRef = React.useRef<number | null>(null);
+  const presetFrameRef = React.useRef<number | null>(null);
+  const currentTimeRef = React.useRef(0);
   const backgroundColor = useEnvironmentStore((state) => state.backgroundColor);
   const setBackgroundColor = useEnvironmentStore(
     (state) => state.setBackgroundColor,
@@ -181,20 +164,120 @@ export const EnvironmentSettings = () => {
   const setToneMapping = useEnvironmentStore((state) => state.setToneMapping);
   const lightingEnabled = useLightingStore((state) => state.enabled);
   const currentTime = useLightingStore((state) => state.currentTime);
-  const preset = useLightingStore((state) => state.preset);
   const orientation = useLightingStore((state) => state.orientation);
   const setLightingEnabled = useLightingStore((state) => state.setEnabled);
   const setCurrentTime = useLightingStore((state) => state.setCurrentTime);
-  const setPreset = useLightingStore((state) => state.setPreset);
   const setOrientation = useLightingStore((state) => state.setOrientation);
   const resetLighting = useLightingStore((state) => state.reset);
-  const activePreset = getPresetDetails(preset);
+  const activePreset = getPresetDetails(resolveStylizedLightingPreset(currentTime));
   const throttledCurrentTime = useRafThrottledNumber(setCurrentTime);
   const throttledOrientation = useRafThrottledNumber(setOrientation);
   const throttledHdrIntensity = useRafThrottledNumber(setHdrIntensity);
   const throttledHdrRotation = useRafThrottledNumber(setHdrRotation);
   const throttledHdrBlur = useRafThrottledNumber(setHdrBlur);
   const throttledExposure = useRafThrottledNumber(setExposure);
+
+  React.useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
+
+  const cancelPlaybackAnimation = React.useCallback(() => {
+    if (playbackFrameRef.current !== null) {
+      cancelAnimationFrame(playbackFrameRef.current);
+      playbackFrameRef.current = null;
+    }
+    playbackLastTickRef.current = null;
+  }, []);
+
+  const cancelPresetAnimation = React.useCallback(() => {
+    if (presetFrameRef.current !== null) {
+      cancelAnimationFrame(presetFrameRef.current);
+      presetFrameRef.current = null;
+    }
+  }, []);
+
+  const animatePresetTime = React.useCallback(
+    (targetTime: number) => {
+      cancelPresetAnimation();
+      cancelPlaybackAnimation();
+      setIsPaused(true);
+
+      const startTime = currentTime;
+      const delta = getShortestTimeDelta(startTime, targetTime);
+      const duration = 520;
+      let startTimestamp: number | null = null;
+
+      const tick = (now: number) => {
+        if (startTimestamp === null) {
+          startTimestamp = now;
+        }
+
+        const progress = Math.min((now - startTimestamp) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setCurrentTime(wrapStylizedTime(startTime + delta * eased));
+
+        if (progress < 1) {
+          presetFrameRef.current = requestAnimationFrame(tick);
+          return;
+        }
+
+        setCurrentTime(targetTime);
+        presetFrameRef.current = null;
+      };
+
+      presetFrameRef.current = requestAnimationFrame(tick);
+    },
+    [cancelPlaybackAnimation, cancelPresetAnimation, currentTime, setCurrentTime],
+  );
+
+  React.useEffect(() => {
+    if (!lightingEnabled || isPaused) {
+      cancelPlaybackAnimation();
+      return;
+    }
+
+    const tick = (now: number) => {
+      const previousTick = playbackLastTickRef.current;
+      playbackLastTickRef.current = now;
+
+      if (previousTick !== null) {
+        const elapsedSeconds = Math.min((now - previousTick) / 1000, 0.1);
+        setCurrentTime(
+          wrapStylizedTime(
+            currentTimeRef.current + elapsedSeconds * speedFactor,
+          ),
+        );
+      }
+
+      playbackFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    playbackFrameRef.current = requestAnimationFrame(tick);
+
+    return cancelPlaybackAnimation;
+  }, [
+    cancelPlaybackAnimation,
+    isPaused,
+    lightingEnabled,
+    setCurrentTime,
+    speedFactor,
+  ]);
+
+  React.useEffect(() => {
+    if (!lightingEnabled) {
+      cancelPlaybackAnimation();
+      cancelPresetAnimation();
+      setIsPaused(true);
+    }
+  }, [cancelPlaybackAnimation, cancelPresetAnimation, lightingEnabled]);
+
+  React.useEffect(
+    () => () => {
+      cancelPlaybackAnimation();
+      cancelPresetAnimation();
+    },
+    [cancelPlaybackAnimation, cancelPresetAnimation],
+  );
 
   const handleImageUpload = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -325,7 +408,12 @@ export const EnvironmentSettings = () => {
                 </div>
                 <Switch
                   checked={lightingEnabled}
-                onCheckedChange={setLightingEnabled}
+                  onCheckedChange={(checked) => {
+                    cancelPlaybackAnimation();
+                    cancelPresetAnimation();
+                    setLightingEnabled(checked);
+                    setIsPaused(!checked);
+                  }}
               />
             </div>
 
@@ -336,7 +424,7 @@ export const EnvironmentSettings = () => {
                     <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
                       Live Time
                     </p>
-                    <p className="mt-2 text-[1.375rem] font-bold leading-none tracking-[-0.04em] text-foreground">
+                    <p className="mt-2 text-[1.15rem] font-bold leading-none tracking-[-0.03em] text-foreground">
                       {formatLightingClock(currentTime)}
                     </p>
                   </div>
@@ -350,28 +438,27 @@ export const EnvironmentSettings = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-52">
                       <DropdownMenuRadioGroup
-                        value={preset}
+                        value={activePreset.value}
                         onValueChange={(value) => {
-                          const selected = getPresetDetails(
-                            value as LightingPreset,
-                          );
-                          setPreset(selected.value);
-                          setCurrentTime(selected.time);
+                          const selected = getPresetDetails(value as LightingPreset);
+                          animatePresetTime(selected.time);
                         }}
                       >
-                        {DAYLIGHT_PRESETS.map((option) => (
-                          <DropdownMenuRadioItem
-                            key={option.value}
-                            value={option.value}
-                            className="items-start py-2"
-                          >
-                            <div>
-                              <div className="text-sm font-medium text-foreground">
-                                {option.label}
+                        {STYLIZED_LIGHTING_PRESET_OPTIONS.map((option) => {
+                          return (
+                            <DropdownMenuRadioItem
+                              key={option.value}
+                              value={option.value}
+                              className="items-start py-2"
+                            >
+                              <div>
+                                <div className="text-sm font-medium text-foreground">
+                                  {option.label}
+                                </div>
                               </div>
-                            </div>
-                          </DropdownMenuRadioItem>
-                        ))}
+                            </DropdownMenuRadioItem>
+                          );
+                        })}
                       </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -403,14 +490,17 @@ export const EnvironmentSettings = () => {
                         max={100}
                         step={0.1}
                         value={currentTime}
-                        onChange={(event) =>
-                          throttledCurrentTime(parseFloat(event.target.value))
-                        }
+                        onChange={(event) => {
+                          cancelPresetAnimation();
+                          cancelPlaybackAnimation();
+                          setIsPaused(true);
+                          throttledCurrentTime(parseFloat(event.target.value));
+                        }}
                         className="block h-5 w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:mt-[-6px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#f6f0e4] [&::-webkit-slider-thumb]:shadow-[0_2px_10px_rgba(0,0,0,0.28)]"
                       />
                     </div>
 
-                    <TickLabels items={TIME_MARKS} />
+                    <TickLabels items={STYLIZED_LIGHTING_TIME_MARKS} />
                   </div>
 
                   <div className="space-y-2">
@@ -432,9 +522,12 @@ export const EnvironmentSettings = () => {
                         max={360}
                         step={1}
                         value={orientation}
-                        onChange={(event) =>
-                          throttledOrientation(parseFloat(event.target.value))
-                        }
+                        onChange={(event) => {
+                          cancelPresetAnimation();
+                          cancelPlaybackAnimation();
+                          setIsPaused(true);
+                          throttledOrientation(parseFloat(event.target.value));
+                        }}
                         className="block h-5 w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-[linear-gradient(90deg,rgba(47,42,36,0.18),rgba(47,42,36,0.42),rgba(47,42,36,0.18))] [&::-webkit-slider-thumb]:mt-[-6px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#f6f0e4] [&::-webkit-slider-thumb]:shadow-[0_2px_10px_rgba(0,0,0,0.28)]"
                       />
                     </div>
@@ -445,17 +538,51 @@ export const EnvironmentSettings = () => {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-border pt-3">
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <Icon
-                        icon={CheckmarkCircle02Icon}
-                        className="h-3.5 w-3.5"
-                      />
-                      <span>{activePreset.label}</span>
+                  <div className="space-y-3 border-t border-border pt-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {[0.5, 1, 2, 4].map((factor) => (
+                        <Button
+                          key={factor}
+                          variant={speedFactor === factor ? "secondary" : "outline"}
+                          size="xs"
+                          onClick={() => setSpeedFactor(factor)}
+                        >
+                          {factor}x
+                        </Button>
+                      ))}
                     </div>
-                    <Button variant="ghost" size="xs" onClick={resetLighting}>
-                      Reset
-                    </Button>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant={isPaused ? "default" : "secondary"}
+                        size="sm"
+                        onClick={() => {
+                          cancelPresetAnimation();
+                          if (isPaused) {
+                            setIsPaused(false);
+                            return;
+                          }
+
+                          cancelPlaybackAnimation();
+                          setIsPaused(true);
+                        }}
+                      >
+                        {isPaused ? "Play" : "Pause"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          cancelPresetAnimation();
+                          cancelPlaybackAnimation();
+                          resetLighting();
+                          setIsPaused(false);
+                          setSpeedFactor(1);
+                        }}
+                      >
+                        Reset
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </>
