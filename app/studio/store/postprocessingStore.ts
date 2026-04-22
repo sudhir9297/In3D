@@ -1,9 +1,10 @@
 import { create } from "zustand";
 
 const MOBILE_BREAKPOINT = 768;
-const QUALITY_ORDER = ["performance", "balanced", "high"] as const;
+const QUALITY_ORDER = ["performance", "default", "balanced", "high"] as const;
 
 export type QualityPreset = (typeof QUALITY_ORDER)[number];
+export type PostprocessingPipeline = "legacy" | "n8ao";
 
 function getDefaultSsgiEnabled() {
   if (typeof window === "undefined") {
@@ -14,7 +15,7 @@ function getDefaultSsgiEnabled() {
 }
 
 function getDefaultQualityPreset(): QualityPreset {
-  return "performance";
+  return "default";
 }
 
 type BloomSettings = {
@@ -41,25 +42,37 @@ type SsgiSettings = {
   thickness: number;
 };
 
+type N8aoSettings = {
+  enabled: boolean;
+  aoRadius: number;
+  intensity: number;
+  distanceFalloff: number;
+  screenSpaceRadius: boolean;
+};
+
 type PostprocessingState = {
+  activePipeline: PostprocessingPipeline;
   qualityPreset: QualityPreset;
   autoQuality: boolean;
   renderVersion: number;
   bloom: BloomSettings;
   ssr: SsrSettings;
   ssgi: SsgiSettings;
+  n8ao: N8aoSettings;
   setQualityPreset: (preset: QualityPreset) => void;
+  setActivePipeline: (pipeline: PostprocessingPipeline) => void;
   setAutoQuality: (autoQuality: boolean) => void;
   lowerQuality: () => void;
   raiseQuality: () => void;
   setBloom: (value: Partial<BloomSettings>) => void;
   setSsr: (value: Partial<SsrSettings>) => void;
   setSsgi: (value: Partial<SsgiSettings>) => void;
+  setN8ao: (value: Partial<N8aoSettings>) => void;
 };
 
 const QUALITY_PRESETS: Record<
   QualityPreset,
-  Pick<PostprocessingState, "bloom" | "ssr" | "ssgi">
+  Pick<PostprocessingState, "bloom" | "ssr" | "ssgi" | "n8ao">
 > = {
   performance: {
     bloom: {
@@ -75,13 +88,50 @@ const QUALITY_PRESETS: Record<
       thickness: 0.1,
     },
     ssgi: {
+      enabled: getDefaultSsgiEnabled(),
+      sliceCount: 2,
+      stepCount: 8,
+      radius: 1,
+      giIntensity: 0.5,
+      aoIntensity: 1.5,
+      thickness: 0.5,
+    },
+    n8ao: {
+      enabled: true,
+      aoRadius: 20,
+      intensity: 3,
+      distanceFalloff: 1,
+      screenSpaceRadius: true,
+    },
+  },
+  default: {
+    bloom: {
       enabled: false,
-      sliceCount: 1,
-      stepCount: 4,
-      radius: 0.6,
-      giIntensity: 0.35,
-      aoIntensity: 1,
-      thickness: 0.35,
+      strength: 0.1,
+      radius: 0.8,
+      threshold: 0.9,
+    },
+    ssr: {
+      enabled: false,
+      maxDistance: 4,
+      blurQuality: 1,
+      thickness: 0.12,
+    },
+    ssgi: {
+      enabled: getDefaultSsgiEnabled(),
+      sliceCount: 2,
+      stepCount: 8,
+      radius: 1,
+      giIntensity: 0.5,
+      aoIntensity: 1.5,
+      thickness: 0.5,
+    },
+    n8ao: {
+      enabled: true,
+      aoRadius: 28,
+      intensity: 4,
+      distanceFalloff: 1,
+      screenSpaceRadius: true,
     },
   },
   balanced: {
@@ -98,13 +148,20 @@ const QUALITY_PRESETS: Record<
       thickness: 0.12,
     },
     ssgi: {
-      enabled: false,
+      enabled: getDefaultSsgiEnabled(),
       sliceCount: 2,
       stepCount: 8,
       radius: 1,
       giIntensity: 0.5,
       aoIntensity: 1.5,
       thickness: 0.5,
+    },
+    n8ao: {
+      enabled: true,
+      aoRadius: 28,
+      intensity: 4,
+      distanceFalloff: 1,
+      screenSpaceRadius: true,
     },
   },
   high: {
@@ -129,6 +186,13 @@ const QUALITY_PRESETS: Record<
       aoIntensity: 1.5,
       thickness: 0.5,
     },
+    n8ao: {
+      enabled: true,
+      aoRadius: 36,
+      intensity: 5,
+      distanceFalloff: 1,
+      screenSpaceRadius: true,
+    },
   },
 };
 
@@ -151,9 +215,11 @@ const getNextQualityPreset = (
 };
 
 export const usePostprocessingStore = create<PostprocessingState>((set) => ({
+  activePipeline: "legacy",
   renderVersion: 0,
   autoQuality: false,
   ...applyQualityPreset(getDefaultQualityPreset()),
+  setActivePipeline: (activePipeline) => set(() => ({ activePipeline })),
   setQualityPreset: (qualityPreset) =>
     set((state) => ({
       ...applyQualityPreset(qualityPreset),
@@ -184,6 +250,11 @@ export const usePostprocessingStore = create<PostprocessingState>((set) => ({
   setSsgi: (value) =>
     set((state) => ({
       ssgi: { ...state.ssgi, ...value },
+      renderVersion: state.renderVersion + 1,
+    })),
+  setN8ao: (value) =>
+    set((state) => ({
+      n8ao: { ...state.n8ao, ...value },
       renderVersion: state.renderVersion + 1,
     })),
 }));

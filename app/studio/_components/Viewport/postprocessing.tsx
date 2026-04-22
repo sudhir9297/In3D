@@ -52,6 +52,9 @@ const Postprocessing = () => {
   const ssrSettings = usePostprocessingStore((state) => state.ssr);
   const ssgiSettings = usePostprocessingStore((state) => state.ssgi);
   const qualityPreset = usePostprocessingStore((state) => state.qualityPreset);
+  const setActivePipeline = usePostprocessingStore(
+    (state) => state.setActivePipeline,
+  );
   const effectiveSsrEnabled = ssrSettings.enabled;
   const effectiveSsgiEnabled = ssgiSettings.enabled;
   const passRefs = useRef<{
@@ -59,6 +62,10 @@ const Postprocessing = () => {
     ssrPass: any;
     ssgiPass: any;
   } | null>(null);
+
+  useEffect(() => {
+    setActivePipeline("legacy");
+  }, [setActivePipeline]);
 
   useLayoutEffect(() => {
     if (!isWebGpuRenderer || !postProcessing) {

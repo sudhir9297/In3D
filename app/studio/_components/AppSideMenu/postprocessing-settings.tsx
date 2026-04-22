@@ -17,6 +17,7 @@ import {
 import {
   ArrowDown01Icon,
   ColorsIcon,
+  Moon02Icon,
   MirrorIcon,
   Settings02Icon,
   SparklesIcon,
@@ -27,6 +28,11 @@ const QUALITY_PRESET_OPTIONS: Array<{
   label: string;
   helper: string;
 }> = [
+  {
+    value: "default",
+    label: "Default",
+    helper: "Uses the earlier custom N8AO setup we had in this project.",
+  },
   {
     value: "performance",
     label: "Performance",
@@ -143,6 +149,7 @@ function PropertySlider({
 }
 
 export const PostprocessingSettings = () => {
+  const activePipeline = usePostprocessingStore((state) => state.activePipeline);
   const qualityPreset = usePostprocessingStore((state) => state.qualityPreset);
   const autoQuality = usePostprocessingStore((state) => state.autoQuality);
   const setQualityPreset = usePostprocessingStore(
@@ -155,6 +162,8 @@ export const PostprocessingSettings = () => {
   const setBloom = usePostprocessingStore((state) => state.setBloom);
   const setSsr = usePostprocessingStore((state) => state.setSsr);
   const setSsgi = usePostprocessingStore((state) => state.setSsgi);
+  const n8ao = usePostprocessingStore((state) => state.n8ao);
+  const setN8ao = usePostprocessingStore((state) => state.setN8ao);
 
   return (
     <div className="space-y-3 px-2 flex-1 h-full min-h-0 overflow-y-auto">
@@ -216,7 +225,66 @@ export const PostprocessingSettings = () => {
         </CollapsibleContent>
       </Collapsible>
 
-      <Collapsible>
+      {activePipeline === "n8ao" ? (
+        <Collapsible>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
+          <div className="flex items-center gap-2">
+            <Icon icon={Moon02Icon} className="h-4 w-4" />
+            <span className="font-medium text-sm">N8AO</span>
+          </div>
+          <Icon
+            icon={ArrowDown01Icon}
+            className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180"
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-3 mt-2 px-2 pb-2">
+            <EffectToggle
+              label="Enable"
+              enabled={n8ao.enabled}
+              onClick={() => setN8ao({ enabled: !n8ao.enabled })}
+            />
+            <EffectToggle
+              label="Screen Space Radius"
+              enabled={n8ao.screenSpaceRadius}
+              onClick={() =>
+                setN8ao({ screenSpaceRadius: !n8ao.screenSpaceRadius })
+              }
+            />
+            <PropertySlider
+              label="AO Radius"
+              value={n8ao.aoRadius}
+              min={1}
+              max={64}
+              step={1}
+              valueDisplay={n8ao.aoRadius.toFixed(0)}
+              onValueChange={(value) => setN8ao({ aoRadius: value })}
+            />
+            <PropertySlider
+              label="Intensity"
+              value={n8ao.intensity}
+              min={0}
+              max={10}
+              step={0.1}
+              valueDisplay={n8ao.intensity.toFixed(1)}
+              onValueChange={(value) => setN8ao({ intensity: value })}
+            />
+            <PropertySlider
+              label="Distance Falloff"
+              value={n8ao.distanceFalloff}
+              min={0.1}
+              max={5}
+              step={0.1}
+              valueDisplay={n8ao.distanceFalloff.toFixed(1)}
+              onValueChange={(value) => setN8ao({ distanceFalloff: value })}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+      ) : null}
+
+      {activePipeline === "legacy" ? (
+        <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={SparklesIcon} className="h-4 w-4" />
@@ -264,8 +332,10 @@ export const PostprocessingSettings = () => {
           </div>
         </CollapsibleContent>
       </Collapsible>
+      ) : null}
 
-      <Collapsible>
+      {activePipeline === "legacy" ? (
+        <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={MirrorIcon} className="h-4 w-4" />
@@ -313,8 +383,10 @@ export const PostprocessingSettings = () => {
           </div>
         </CollapsibleContent>
       </Collapsible>
+      ) : null}
 
-      <Collapsible>
+      {activePipeline === "legacy" ? (
+        <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={ColorsIcon} className="h-4 w-4" />
@@ -389,6 +461,7 @@ export const PostprocessingSettings = () => {
           </div>
         </CollapsibleContent>
       </Collapsible>
+      ) : null}
     </div>
   );
 };
