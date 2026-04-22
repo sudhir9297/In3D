@@ -9,46 +9,13 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Icon } from "@/components/ui/huge-icon";
-import { Switch } from "@/components/ui/switch";
-import {
-  QualityPreset,
-  usePostprocessingStore,
-} from "../../store/postprocessingStore";
+import { usePostprocessingStore } from "../../store/postprocessingStore";
 import {
   ArrowDown01Icon,
   ColorsIcon,
-  Moon02Icon,
   MirrorIcon,
-  Settings02Icon,
   SparklesIcon,
 } from "@hugeicons/core-free-icons";
-
-const QUALITY_PRESET_OPTIONS: Array<{
-  value: QualityPreset;
-  label: string;
-  helper: string;
-}> = [
-  {
-    value: "default",
-    label: "Default",
-    helper: "Uses the earlier custom N8AO setup we had in this project.",
-  },
-  {
-    value: "performance",
-    label: "Performance",
-    helper: "Minimal GI and smaller shadows for weak GPUs.",
-  },
-  {
-    value: "balanced",
-    label: "Balanced",
-    helper: "Keeps reflections while easing off the heaviest passes.",
-  },
-  {
-    value: "high",
-    label: "High",
-    helper: "Full-quality reflections, GI, and larger shadows.",
-  },
-];
 
 function useRafThrottledNumber(callback: (value: number) => void) {
   const frameRef = React.useRef<number | null>(null);
@@ -149,142 +116,16 @@ function PropertySlider({
 }
 
 export const PostprocessingSettings = () => {
-  const activePipeline = usePostprocessingStore((state) => state.activePipeline);
-  const qualityPreset = usePostprocessingStore((state) => state.qualityPreset);
-  const autoQuality = usePostprocessingStore((state) => state.autoQuality);
-  const setQualityPreset = usePostprocessingStore(
-    (state) => state.setQualityPreset,
-  );
-  const setAutoQuality = usePostprocessingStore((state) => state.setAutoQuality);
   const bloom = usePostprocessingStore((state) => state.bloom);
   const ssr = usePostprocessingStore((state) => state.ssr);
   const ssgi = usePostprocessingStore((state) => state.ssgi);
   const setBloom = usePostprocessingStore((state) => state.setBloom);
   const setSsr = usePostprocessingStore((state) => state.setSsr);
   const setSsgi = usePostprocessingStore((state) => state.setSsgi);
-  const n8ao = usePostprocessingStore((state) => state.n8ao);
-  const setN8ao = usePostprocessingStore((state) => state.setN8ao);
 
   return (
     <div className="space-y-3 px-2 flex-1 h-full min-h-0 overflow-y-auto">
       <Collapsible>
-        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
-          <div className="flex items-center gap-2">
-            <Icon icon={Settings02Icon} className="h-4 w-4" />
-            <span className="font-medium text-sm">Render Quality</span>
-          </div>
-          <Icon
-            icon={ArrowDown01Icon}
-            className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180"
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="mt-2 space-y-3 px-2 pb-2">
-            <div className="flex items-center justify-between rounded-md border border-border/60 px-2 py-2">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-foreground">
-                  Auto Adapt
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Let the viewport step quality up or down based on frame stability.
-                </p>
-              </div>
-              <Switch checked={autoQuality} onCheckedChange={setAutoQuality} />
-            </div>
-
-            <div className="grid gap-2">
-              {QUALITY_PRESET_OPTIONS.map((option) => {
-                const isActive = qualityPreset === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setQualityPreset(option.value)}
-                    className={`rounded-md border px-3 py-2 text-left transition-colors ${
-                      isActive
-                        ? "border-chart-2/60 bg-chart-2/8"
-                        : "border-border/60 hover:bg-accent"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{option.label}</span>
-                      {isActive ? (
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-chart-2">
-                          Active
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      {option.helper}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {activePipeline === "n8ao" ? (
-        <Collapsible>
-        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
-          <div className="flex items-center gap-2">
-            <Icon icon={Moon02Icon} className="h-4 w-4" />
-            <span className="font-medium text-sm">N8AO</span>
-          </div>
-          <Icon
-            icon={ArrowDown01Icon}
-            className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&:rotate-180"
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="space-y-3 mt-2 px-2 pb-2">
-            <EffectToggle
-              label="Enable"
-              enabled={n8ao.enabled}
-              onClick={() => setN8ao({ enabled: !n8ao.enabled })}
-            />
-            <EffectToggle
-              label="Screen Space Radius"
-              enabled={n8ao.screenSpaceRadius}
-              onClick={() =>
-                setN8ao({ screenSpaceRadius: !n8ao.screenSpaceRadius })
-              }
-            />
-            <PropertySlider
-              label="AO Radius"
-              value={n8ao.aoRadius}
-              min={1}
-              max={64}
-              step={1}
-              valueDisplay={n8ao.aoRadius.toFixed(0)}
-              onValueChange={(value) => setN8ao({ aoRadius: value })}
-            />
-            <PropertySlider
-              label="Intensity"
-              value={n8ao.intensity}
-              min={0}
-              max={10}
-              step={0.1}
-              valueDisplay={n8ao.intensity.toFixed(1)}
-              onValueChange={(value) => setN8ao({ intensity: value })}
-            />
-            <PropertySlider
-              label="Distance Falloff"
-              value={n8ao.distanceFalloff}
-              min={0.1}
-              max={5}
-              step={0.1}
-              valueDisplay={n8ao.distanceFalloff.toFixed(1)}
-              onValueChange={(value) => setN8ao({ distanceFalloff: value })}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-      ) : null}
-
-      {activePipeline === "legacy" ? (
-        <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={SparklesIcon} className="h-4 w-4" />
@@ -332,10 +173,8 @@ export const PostprocessingSettings = () => {
           </div>
         </CollapsibleContent>
       </Collapsible>
-      ) : null}
 
-      {activePipeline === "legacy" ? (
-        <Collapsible>
+      <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={MirrorIcon} className="h-4 w-4" />
@@ -383,10 +222,8 @@ export const PostprocessingSettings = () => {
           </div>
         </CollapsibleContent>
       </Collapsible>
-      ) : null}
 
-      {activePipeline === "legacy" ? (
-        <Collapsible>
+      <Collapsible>
         <CollapsibleTrigger className="flex items-center justify-between w-full py-2 px-2 hover:bg-accent rounded-md">
           <div className="flex items-center gap-2">
             <Icon icon={ColorsIcon} className="h-4 w-4" />
@@ -461,7 +298,6 @@ export const PostprocessingSettings = () => {
           </div>
         </CollapsibleContent>
       </Collapsible>
-      ) : null}
     </div>
   );
 };

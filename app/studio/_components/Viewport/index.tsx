@@ -19,8 +19,7 @@ import { useViewportRenderInvalidation } from "../../hooks/useViewportRenderInva
 
 import Dropzone from "./dropzone";
 import SceneGrid from "./scene-grid";
-// import Postprocessing from "./postprocessing";
-import Postprocessing3 from "./postprocessing3";
+import Postprocessing4 from "./postprocessing4";
 import { SunLightRig } from "./sun-light-rig";
 import {
   useEnvironmentStore,
@@ -336,7 +335,7 @@ export const ViewerWrapper = () => {
         <ViewportGizmo />
 
         {/* <Postprocessing /> */}
-        <Postprocessing3 />
+        <Postprocessing4 />
       </Canvas>
     </div>
   );

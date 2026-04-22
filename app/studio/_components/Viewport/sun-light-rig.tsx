@@ -1,18 +1,18 @@
 "use client";
 
-import { PerformanceMonitor } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 
 import { useEnvironmentStore } from "../../store/environmentStore";
 import { useLightingStore } from "../../store/lightingStore";
-import { usePostprocessingStore } from "../../store/postprocessingStore";
-import { SHADOW_MAP_SIZES } from "../../utils/renderQuality";
 import {
   getStylizedBackgroundHex,
   getStylizedLightState,
 } from "../../utils/stylizedLighting";
+
+const SHADOW_MAP_SIZE = 1024;
+const ENABLE_SECONDARY_LIGHTS = true;
 
 export function SunLightRig() {
   const initialLightingState = useRef(useLightingStore.getState());
@@ -50,14 +50,6 @@ export function SunLightRig() {
     }),
     [],
   );
-
-  const qualityPreset = usePostprocessingStore((state) => state.qualityPreset);
-  const autoQuality = usePostprocessingStore((state) => state.autoQuality);
-  const lowerQuality = usePostprocessingStore((state) => state.lowerQuality);
-  const raiseQuality = usePostprocessingStore((state) => state.raiseQuality);
-  const shadowMapSize = SHADOW_MAP_SIZES[qualityPreset];
-  const enableSecondaryLights = qualityPreset !== "performance";
-
   useEffect(() => {
     const unsubscribeLighting = useLightingStore.subscribe((state) => {
       lightingStateRef.current = {
@@ -91,7 +83,7 @@ export function SunLightRig() {
     if (rimTargetRef.current && rimRef.current) {
       rimRef.current.target = rimTargetRef.current;
     }
-  }, [enableSecondaryLights]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -221,19 +213,6 @@ export function SunLightRig() {
 
   return (
     <>
-      <PerformanceMonitor
-        onDecline={() => {
-          if (autoQuality) {
-            lowerQuality();
-          }
-        }}
-        onIncline={() => {
-          if (autoQuality) {
-            raiseQuality();
-          }
-        }}
-      />
-
       <object3D ref={keyTargetRef} position={[0, 1.8, 0]} />
       <object3D ref={fillTargetRef} position={[0, 1.2, 0]} />
       <object3D ref={rimTargetRef} position={[0, 1.6, 0]} />
@@ -249,8 +228,8 @@ export function SunLightRig() {
         color={initialKeyState.color}
         intensity={initialKeyState.intensity}
         castShadow
-        shadow-mapSize-width={shadowMapSize}
-        shadow-mapSize-height={shadowMapSize}
+        shadow-mapSize-width={SHADOW_MAP_SIZE}
+        shadow-mapSize-height={SHADOW_MAP_SIZE}
         shadow-bias={-0.0008}
         shadow-normalBias={0.02}
         shadow-radius={1.8}
@@ -261,7 +240,7 @@ export function SunLightRig() {
         />
       </directionalLight>
 
-      {enableSecondaryLights ? (
+      {ENABLE_SECONDARY_LIGHTS ? (
         <>
           <directionalLight
             ref={fillRef}

@@ -22,4 +22,8 @@ declare module "three/examples/jsm/tsl/display/TRAANode.js" {
   export const traa: (...args: any[]) => any;
 }
 
+declare module "three/examples/jsm/tsl/display/DenoiseNode.js" {
+  export const denoise: (...args: any[]) => any;
+}
+
 export {};
