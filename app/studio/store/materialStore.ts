@@ -92,7 +92,7 @@ const defaultMaps: MaterialMaps = {
   roughnessMap: { ...defaultMapInfo },
   normalMap: { ...defaultMapInfo },
   displacementMap: { ...defaultMapInfo },
-  aoMap: { ...defaultMapInfo, repeatX: 1, repeatY: 1 }, // AO usually 1:1
+  aoMap: { ...defaultMapInfo },
   emissiveMap: { ...defaultMapInfo },
   bumpMap: { ...defaultMapInfo },
   alphaMap: { ...defaultMapInfo },
@@ -171,8 +171,6 @@ export const useMaterialStore = create<MaterialStore>((set) => ({
       if (changedProps.length > 0) {
         const newMaps = { ...state.maps };
         Object.keys(newMaps).forEach((key) => {
-          if (key === "aoMap") return; // Skip AO map
-
           const mapKey = key as keyof MaterialMaps;
           newMaps[mapKey] = {
             ...newMaps[mapKey],

@@ -681,17 +681,9 @@ export const applyMaterialProperties = (
       ].filter((t): t is Texture => t !== null);
 
       textures.forEach((texture) => {
-        // Skip global transformations for AO maps unless explicitly targeted (which shouldn't happen here)
-        const isAO = texture === material.aoMap;
-        if (!isAO) {
-          applyTextureTransformations(texture, props as any);
-          if (props.flipY !== undefined) {
-            texture.flipY = props.flipY;
-          }
-        } else if (props.flipY !== undefined) {
-          // FlipY still applies to AO
+        applyTextureTransformations(texture, props as any);
+        if (props.flipY !== undefined) {
           texture.flipY = props.flipY;
-          texture.needsUpdate = true;
         }
       });
     }

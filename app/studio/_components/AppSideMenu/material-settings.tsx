@@ -743,8 +743,8 @@ const MapRow = React.memo(function MapRow({
         thumbnail: "",
         map: url,
         use: true,
-        repeatX: mapKey === "aoMap" ? 1 : 8,
-        repeatY: mapKey === "aoMap" ? 1 : 8,
+        repeatX: useMaterialStore.getState().mapProperties.repeatX,
+        repeatY: useMaterialStore.getState().mapProperties.repeatY,
         rotation: useMaterialStore.getState().mapProperties.rotation,
         wrapS: useMaterialStore.getState().mapProperties.wrapS,
         wrapT: useMaterialStore.getState().mapProperties.wrapT,
@@ -763,8 +763,8 @@ const MapRow = React.memo(function MapRow({
         // Apply existing properties to the new texture
         const props = useMaterialStore.getState().mapProperties;
 
-        // Reset repeat to 8 as per user request whenever a new texture is applied
-        const repeatVal = mapKey === "aoMap" ? 1 : 8;
+        const repeatX = props.repeatX;
+        const repeatY = props.repeatY;
         updateMeshTexture(selectedMesh, mapKey, texture);
 
         const dataUrl = textureToDataURL(texture);
@@ -777,8 +777,8 @@ const MapRow = React.memo(function MapRow({
             thumbnail: dataUrl,
             map: url,
             use: true,
-            repeatX: repeatVal,
-            repeatY: repeatVal,
+            repeatX,
+            repeatY,
             rotation: props.rotation,
             wrapS: props.wrapS,
             wrapT: props.wrapT,
@@ -807,8 +807,8 @@ const MapRow = React.memo(function MapRow({
           thumbnail: "",
           map: "",
           use: false,
-          repeatX: mapKey === "aoMap" ? 1 : 8,
-          repeatY: mapKey === "aoMap" ? 1 : 8,
+          repeatX: useMaterialStore.getState().mapProperties.repeatX,
+          repeatY: useMaterialStore.getState().mapProperties.repeatY,
           rotation: 0,
           wrapS: "Repeat",
           wrapT: "Repeat",
@@ -863,7 +863,11 @@ const MapRow = React.memo(function MapRow({
 
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
             disabled={!canEdit}
             className="absolute inset-0 flex items-center justify-center bg-black/28 opacity-0 transition-opacity group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-0"
             title={isActive ? `Replace ${label}` : `Upload ${label}`}
